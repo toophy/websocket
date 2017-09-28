@@ -15,9 +15,9 @@ import (
 )
 
 type AccountData struct {
-	Name string
-	Pwd  string
-	C    *websocket.Conn
+	Account string
+	Pwd     string
+	C       *websocket.Conn
 }
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
@@ -71,8 +71,8 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if len(a.Name) > 0 {
-		delete(gAccounts, a.Name)
+	if len(a.Account) > 0 {
+		delete(gAccounts, a.Account)
 	}
 }
 
@@ -94,6 +94,44 @@ func main() {
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
+func Broadcast_Scene_Skill(a *AccountData, mt int, data *EchoProto) {
+
+	for k, _ := range gAccounts {
+		if gAccounts[k].Account == a.Account {
+			continue
+		}
+
+		// 技能目标
+		// 技能xx
+		retData := struct {
+			Name    string `json:"name"` // 技能name
+			Account string `json:"account"`
+			Ret     string `json:"ret"`
+		}{
+			data.Data["name"].(string),
+			a.Account,
+			"ok"}
+
+		ret, _ := json.Marshal(struct {
+			C    string `json:"c"`
+			M    string `json:"m"`
+			Data struct {
+				Name    string `json:"name"` // 技能name
+				Account string `json:"account"`
+				Ret     string `json:"ret"`
+			} `json:"data"`
+		}{
+			C:    "Scene",
+			M:    "Skill",
+			Data: retData})
+
+		err := gAccounts[k].C.WriteMessage(mt, ret)
+		if err != nil {
+			log.Println("write:", err)
+		}
+	}
+}
+
 func Scene_Skill(a *AccountData, mt int, data *EchoProto) bool {
 
 	// 技能目标
@@ -104,7 +142,7 @@ func Scene_Skill(a *AccountData, mt int, data *EchoProto) bool {
 		Ret     string `json:"ret"`
 	}{
 		data.Data["name"].(string),
-		a.Name,
+		a.Account,
 		"ok"}
 
 	ret, _ := json.Marshal(struct {
@@ -129,36 +167,94 @@ func Scene_Skill(a *AccountData, mt int, data *EchoProto) bool {
 	return true
 }
 
+func Broadcast_Scene_PlayerEnter(a *AccountData, mt int, data *EchoProto) {
+
+	for k, _ := range gAccounts {
+		if gAccounts[k].Account == a.Account {
+			continue
+		}
+
+		pos_x, _ := data.Data["pos_x"].(int)
+		pos_y, _ := data.Data["pos_y"].(int)
+
+		retData := struct {
+			Account string `json:"account"`
+			Pwd     string `json:"pwd"`
+			PosX    int    `json:"pos_x"`
+			PosY    int    `json:"pos_y"`
+			Ret     string `json:"ret"`
+			Msg     string `json:"msg"`
+		}{
+			data.Data["account"].(string),
+			data.Data["pwd"].(string),
+			pos_x,
+			pos_y,
+			"ok",
+			""}
+
+		ret, _ := json.Marshal(struct {
+			C    string `json:"c"`
+			M    string `json:"m"`
+			Data struct {
+				Account string `json:"account"`
+				Pwd     string `json:"pwd"`
+				PosX    int    `json:"pos_x"`
+				PosY    int    `json:"pos_y"`
+				Ret     string `json:"ret"`
+				Msg     string `json:"msg"`
+			} `json:"data"`
+		}{
+			C:    data.C,
+			M:    data.M,
+			Data: retData})
+
+		err := gAccounts[k].C.WriteMessage(mt, ret)
+		if err != nil {
+			log.Println("write:", err)
+		}
+	}
+}
+
 func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
+
+	pos_x, _ := data.Data["pos_x"].(int)
+	pos_y, _ := data.Data["pos_y"].(int)
+
 	retData := struct {
-		Name string `json:"name"`
-		Pwd  string `json:"pwd"`
-		Ret  string `json:"ret"`
-		Msg  string `json:"msg"`
+		Account string `json:"account"`
+		Pwd     string `json:"pwd"`
+		PosX    int    `json:"pos_x"`
+		PosY    int    `json:"pos_y"`
+		Ret     string `json:"ret"`
+		Msg     string `json:"msg"`
 	}{
-		data.Data["name"].(string),
+		data.Data["account"].(string),
 		data.Data["pwd"].(string),
+		pos_x,
+		pos_y,
 		"ok",
 		""}
 
-	log.Printf("name:%s,pwd:%s", data.Data["name"], data.Data["pwd"])
-	if _, ok := gAccounts[data.Data["name"].(string)]; ok {
+	log.Printf("account:%s,pwd:%s", data.Data["account"], data.Data["pwd"])
+	if _, ok := gAccounts[data.Data["account"].(string)]; ok {
 		retData.Ret = "fail"
 		retData.Msg = "重复登录"
 	} else {
-		a.Name = data.Data["name"].(string)
+		a.Account = data.Data["account"].(string)
 		a.Pwd = data.Data["pwd"].(string)
-		gAccounts[data.Data["name"].(string)] = a
+		gAccounts[data.Data["account"].(string)] = a
 	}
 
 	ret, _ := json.Marshal(struct {
 		C    string `json:"c"`
 		M    string `json:"m"`
 		Data struct {
-			Name string `json:"name"`
-			Pwd  string `json:"pwd"`
-			Ret  string `json:"ret"`
-			Msg  string `json:"msg"`
+			Account string `json:"account"`
+			Pwd     string `json:"pwd"`
+			PosX    int    `json:"pos_x"`
+			PosY    int    `json:"pos_y"`
+			Ret     string `json:"ret"`
+			Msg     string `json:"msg"`
 		} `json:"data"`
 	}{
 		C:    data.C,
@@ -170,6 +266,9 @@ func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
 		log.Println("write:", err)
 		return false
 	}
+
+	Broadcast_Scene_PlayerEnter(a, mt, data)
+
 	return true
 }
 
