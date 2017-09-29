@@ -106,10 +106,12 @@ func Broadcast_Scene_Skill(a *AccountData, mt int, data *EchoProto) {
 		retData := struct {
 			Name    string `json:"name"` // 技能name
 			Account string `json:"account"`
+			IsDown  bool   `json:"isDown"`
 			Ret     string `json:"ret"`
 		}{
 			data.Data["name"].(string),
 			a.Account,
+			data.Data["isDown"].(bool),
 			"ok"}
 
 		ret, _ := json.Marshal(struct {
@@ -118,6 +120,7 @@ func Broadcast_Scene_Skill(a *AccountData, mt int, data *EchoProto) {
 			Data struct {
 				Name    string `json:"name"` // 技能name
 				Account string `json:"account"`
+				IsDown  bool   `json:"isDown"`
 				Ret     string `json:"ret"`
 			} `json:"data"`
 		}{
@@ -163,6 +166,8 @@ func Scene_Skill(a *AccountData, mt int, data *EchoProto) bool {
 		log.Println("write:", err)
 		return false
 	}
+
+	Broadcast_Scene_Skill(a, mt, data)
 
 	return true
 }
@@ -267,6 +272,8 @@ func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
 		return false
 	}
 
+	data.C = "Scene"
+	data.M = "PlayerEnter"
 	Broadcast_Scene_PlayerEnter(a, mt, data)
 
 	return true
