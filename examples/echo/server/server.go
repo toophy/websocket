@@ -17,6 +17,7 @@ import (
 type AccountData struct {
 	Account string
 	Pwd     string
+	Mt      int
 	C       *websocket.Conn
 }
 
@@ -72,6 +73,7 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(a.Account) > 0 {
+		Broadcast_Scene_PlayerLeave(a)
 		delete(gAccounts, a.Account)
 	}
 }
@@ -94,7 +96,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
-func Broadcast_Scene_Skill(a *AccountData, mt int, data *EchoProto) {
+func Broadcast_Scene_Skill(a *AccountData, data *EchoProto) {
 
 	for k, _ := range gAccounts {
 		if gAccounts[k].Account == a.Account {
@@ -128,7 +130,7 @@ func Broadcast_Scene_Skill(a *AccountData, mt int, data *EchoProto) {
 			M:    "Skill",
 			Data: retData})
 
-		err := gAccounts[k].C.WriteMessage(mt, ret)
+		err := gAccounts[k].C.WriteMessage(a.Mt, ret)
 		if err != nil {
 			log.Println("write:", err)
 		}
@@ -167,12 +169,15 @@ func Scene_Skill(a *AccountData, mt int, data *EchoProto) bool {
 		return false
 	}
 
-	Broadcast_Scene_Skill(a, mt, data)
+	Broadcast_Scene_Skill(a, data)
 
 	return true
 }
 
-func Broadcast_Scene_PlayerEnter(a *AccountData, mt int, data *EchoProto) {
+func Broadcast_Scene_PlayerEnter(a *AccountData, data *EchoProto) {
+
+	data.C = "Scene"
+	data.M = "PlayerEnter"
 
 	for k, _ := range gAccounts {
 		if gAccounts[k].Account == a.Account {
@@ -213,7 +218,43 @@ func Broadcast_Scene_PlayerEnter(a *AccountData, mt int, data *EchoProto) {
 			M:    data.M,
 			Data: retData})
 
-		err := gAccounts[k].C.WriteMessage(mt, ret)
+		err := gAccounts[k].C.WriteMessage(gAccounts[k].Mt, ret)
+		if err != nil {
+			log.Println("write:", err)
+		}
+	}
+}
+
+func Broadcast_Scene_PlayerLeave(a *AccountData) {
+
+	for k, _ := range gAccounts {
+		if gAccounts[k].Account == a.Account {
+			continue
+		}
+
+		retData := struct {
+			Account string `json:"account"`
+			Ret     string `json:"ret"`
+			Msg     string `json:"msg"`
+		}{
+			a.Account,
+			"ok",
+			""}
+
+		ret, _ := json.Marshal(struct {
+			C    string `json:"c"`
+			M    string `json:"m"`
+			Data struct {
+				Account string `json:"account"`
+				Ret     string `json:"ret"`
+				Msg     string `json:"msg"`
+			} `json:"data"`
+		}{
+			C:    "Scene",
+			M:    "PlayerLeave",
+			Data: retData})
+
+		err := gAccounts[k].C.WriteMessage(gAccounts[k].Mt, ret)
 		if err != nil {
 			log.Println("write:", err)
 		}
@@ -247,6 +288,7 @@ func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
 	} else {
 		a.Account = data.Data["account"].(string)
 		a.Pwd = data.Data["pwd"].(string)
+		a.Mt = mt
 		gAccounts[data.Data["account"].(string)] = a
 	}
 
@@ -274,7 +316,7 @@ func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
 
 	data.C = "Scene"
 	data.M = "PlayerEnter"
-	Broadcast_Scene_PlayerEnter(a, mt, data)
+	Broadcast_Scene_PlayerEnter(a, data)
 
 	return true
 }
