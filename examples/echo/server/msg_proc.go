@@ -176,23 +176,18 @@ func Broadcast_Scene_PlayerLeave(a *AccountData) {
 
 func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
 
-	pos_x, _ := data.Data["pos_x"].(int)
-	pos_y, _ := data.Data["pos_y"].(int)
-
 	retData := struct {
-		Account string `json:"account"`
-		Pwd     string `json:"pwd"`
-		PosX    int    `json:"pos_x"`
-		PosY    int    `json:"pos_y"`
-		Ret     string `json:"ret"`
-		Msg     string `json:"msg"`
+		C    string                 `json:"c"`
+		M    string                 `json:"m"`
+		Data map[string]interface{} `json:"data"`
+		Ret  string                 `json:"ret"`
+		Msg  string                 `json:"msg"`
 	}{
-		data.Data["account"].(string),
-		data.Data["pwd"].(string),
-		pos_x,
-		pos_y,
-		"ok",
-		""}
+		C:    data.C,
+		M:    data.M,
+		Data: data.Data,
+		Ret:  "ok",
+		Msg:  ""}
 
 	log.Printf("account:%s,pwd:%s", data.Data["account"], data.Data["pwd"])
 	if _, ok := gAccounts[data.Data["account"].(string)]; ok {
@@ -205,21 +200,7 @@ func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
 		gAccounts[data.Data["account"].(string)] = a
 	}
 
-	ret, _ := json.Marshal(struct {
-		C    string `json:"c"`
-		M    string `json:"m"`
-		Data struct {
-			Account string `json:"account"`
-			Pwd     string `json:"pwd"`
-			PosX    int    `json:"pos_x"`
-			PosY    int    `json:"pos_y"`
-			Ret     string `json:"ret"`
-			Msg     string `json:"msg"`
-		} `json:"data"`
-	}{
-		C:    data.C,
-		M:    data.M,
-		Data: retData})
+	ret, _ := json.Marshal(retData)
 
 	err := a.C.WriteMessage(mt, ret)
 	if err != nil {
