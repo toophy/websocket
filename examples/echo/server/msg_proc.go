@@ -91,6 +91,35 @@ func Broadcast_Scene_PlayerEnter(a *AccountData, data *EchoProto) {
 	}
 }
 
+func Broadcast_Scene_PlayerEnter_ToMe(a *AccountData) {
+
+	for k, _ := range gAccounts {
+		if gAccounts[k].Account == a.Account {
+			continue
+		}
+
+		data := map[string]interface{}{"account": gAccounts[k].Account, "pwd": gAccounts[k].Pwd, "pos_x": 0, "pos_y": 0}
+
+		ret, _ := json.Marshal(struct {
+			C    string                 `json:"c"`
+			M    string                 `json:"m"`
+			Data map[string]interface{} `json:"data"`
+			Ret  string                 `json:"ret"`
+			Msg  string                 `json:"msg"`
+		}{
+			C:    "Scene",
+			M:    "PlayerEnter",
+			Data: data,
+			Ret:  "ok",
+			Msg:  ""})
+
+		err := a.C.WriteMessage(a.Mt, ret)
+		if err != nil {
+			log.Println("write:", err)
+		}
+	}
+}
+
 func Broadcast_Scene_PlayerLeave(a *AccountData) {
 
 	data := map[string]interface{}{"account": a.Account}
@@ -157,6 +186,7 @@ func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
 	data.C = "Scene"
 	data.M = "PlayerEnter"
 	Broadcast_Scene_PlayerEnter(a, data)
+	Broadcast_Scene_PlayerEnter_ToMe(a)
 
 	return true
 }
