@@ -64,6 +64,37 @@ func Scene_Skill(a *AccountData, mt int, data *EchoProto) bool {
 	return true
 }
 
+func Scene_PlayerPoint(a *AccountData, mt int, data *EchoProto) bool {
+
+	data.Data["account"] = a.Account
+
+	ret, _ := json.Marshal(struct {
+		C    string                 `json:"c"`
+		M    string                 `json:"m"`
+		Data map[string]interface{} `json:"data"`
+		Ret  string                 `json:"ret"`
+		Msg  string                 `json:"msg"`
+	}{
+		C:    data.C,
+		M:    data.M,
+		Data: data.Data,
+		Ret:  "ok",
+		Msg:  ""})
+
+	err := a.C.WriteMessage(mt, ret)
+	if err != nil {
+		log.Println("write:", err)
+		return false
+	}
+
+	a.PosX = data.Data["x"].(float64)
+	a.PosY = data.Data["y"].(float64)
+
+	Broadcast_Scene_Skill(a, data)
+
+	return true
+}
+
 func Broadcast_Scene_PlayerEnter(a *AccountData, data *EchoProto) {
 
 	ret, _ := json.Marshal(struct {
@@ -98,7 +129,7 @@ func Broadcast_Scene_PlayerEnter_ToMe(a *AccountData) {
 			continue
 		}
 
-		data := map[string]interface{}{"account": gAccounts[k].Account, "pwd": gAccounts[k].Pwd, "pos_x": 0, "pos_y": 0}
+		data := map[string]interface{}{"account": gAccounts[k].Account, "pwd": gAccounts[k].Pwd, "pos_x": gAccounts[k].PosX, "pos_y": gAccounts[k].PosY}
 
 		ret, _ := json.Marshal(struct {
 			C    string                 `json:"c"`

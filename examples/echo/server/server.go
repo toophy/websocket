@@ -19,6 +19,8 @@ type AccountData struct {
 	Pwd     string
 	Mt      int
 	C       *websocket.Conn
+	PosX    float64
+	PosY    float64
 }
 
 var addr = flag.String("addr", "0.0.0.0:8080", "http service address")
@@ -88,6 +90,7 @@ func main() {
 
 	gMsgFuncs["Index.Login"] = &MessageFunc{CM: "Index.Login", Proc: Index_Login}
 	gMsgFuncs["Scene.Skill"] = &MessageFunc{CM: "Scene.Skill", Proc: Scene_Skill}
+	gMsgFuncs["Scene.PlayerPoint"] = &MessageFunc{CM: "Scene.PlayerPoint", Proc: Scene_PlayerPoint}
 
 	flag.Parse()
 	log.SetFlags(0)
