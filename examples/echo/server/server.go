@@ -14,6 +14,23 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// 房间
+type Room struct {
+	// 场景
+	// 玩家
+	// 积分
+	// 挂靠的玩法
+}
+
+// 场景
+type Scene struct {
+	// 地图对应的文件(json格式,有版本号)
+	// 地图内存数据
+	// 开始时间
+	// 存活时间
+	// 不同类型的刷新区(道具,宝物,积分)
+}
+
 type AccountData struct {
 	Account string
 	Pwd     string
