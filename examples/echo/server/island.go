@@ -1,7 +1,7 @@
 //
 package main
 
-import "golang.org/x/net/websocket"
+import "github.com/gorilla/websocket"
 
 type AccountData struct {
 	ID      int64
@@ -23,19 +23,18 @@ type Room struct {
 
 // 场景
 type Scene struct {
-	ConfigFile            string // 地图对应的文件(json格式,有版本号)
-	Version               int64  // 版本号
-	IsLandBlockTileWidth  int16  // 浮岛块的tile宽
-	IsLandBlockTileHeight int16  // 浮岛块的tile高
-	RoleTileWidth         int16  // role的tile宽
-	RoleTileHeight        int16  // role的tile高
-	// 地图内存数据
-	StartTime int64             // 开始时间
-	EndTime   int64             // 存活时间
-	FrameTime int64             // 一帧的时间
-	FrameID   int64             // 当前是第几帧, 一般是1秒10帧或5帧
-	IsLands   map[int64]*IsLand // 浮岛列表
-	Roles     map[int64]*Role   // 角色列表
+	ConfigFile            string            // 地图对应的文件(json格式,有版本号)
+	Version               int64             // 版本号
+	IsLandBlockTileWidth  int16             // 浮岛块的tile宽
+	IsLandBlockTileHeight int16             // 浮岛块的tile高
+	RoleTileWidth         int16             // role的tile宽
+	RoleTileHeight        int16             // role的tile高
+	StartTime             int64             // 开始时间
+	EndTime               int64             // 存活时间
+	FrameTime             int64             // 一帧的时间
+	FrameID               int64             // 当前是第几帧, 一般是1秒5帧
+	IsLands               map[int64]*IsLand // 浮岛列表
+	Roles                 map[int64]*Role   // 角色列表
 }
 
 // 位置
@@ -48,16 +47,14 @@ type Vec4 struct {
 
 // 浮岛地块, 也是一种角色, 具备 血量等属性
 type IsLandBlock struct {
-	IsLandID int64 // 浮岛
-	X        int32 // 序号(x坐标)
-	Type     int32 // 类型
-	Param    int64 // 参数
+	Pos   Vec4  // 位置
+	Type  int32 // 类型
+	Param int64 // 参数
 }
 
 // 浮岛
-// 浮岛生成json文件
 type IsLand struct {
-	Pos    Vec4                   // 浮岛位置
+	Pos    Vec4                   // 位置
 	Blocks map[int16]*IsLandBlock // 每个地块属性
 	// 浮岛长度
 	// 浮岛重量
@@ -70,7 +67,7 @@ type Role struct {
 	Account string // 帐号
 	Name    string // 角色名
 	ID      int64  // 角色ID
-	Pos     Vec4   // 角色位置
+	Pos     Vec4   // 位置
 	SceneID int64  // 角色所在场景ID
 	// 角色重量
 	// 角色移动相关(速度, 加速度, 惯性)

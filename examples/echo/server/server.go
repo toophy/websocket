@@ -36,6 +36,11 @@ var gMsgFuncs map[string]*MessageFunc
 
 var gAccounts map[string]*AccountData
 
+func init() {
+	gMsgFuncs = make(map[string]*MessageFunc, 0)
+	gAccounts = make(map[string]*AccountData, 0)
+}
+
 func echo(w http.ResponseWriter, r *http.Request) {
 
 	upgrader.CheckOrigin = func(r *http.Request) bool {
@@ -76,8 +81,6 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	gMsgFuncs = make(map[string]*MessageFunc, 0)
-	gAccounts = make(map[string]*AccountData, 0)
 
 	gMsgFuncs["Index.Login"] = &MessageFunc{CM: "Index.Login", Proc: Index_Login}
 	gMsgFuncs["Scene.Skill"] = &MessageFunc{CM: "Scene.Skill", Proc: Scene_Skill}
