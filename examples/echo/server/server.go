@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/gorilla/websocket/examples/echo/server/game"
 )
 
 var addr = flag.String("addr", "0.0.0.0:8080", "http service address")
@@ -25,7 +26,7 @@ type EchoProto struct {
 	Data map[string]interface{} `json:"data"`
 }
 
-type TMsgFunc func(a *AccountData, mt int, data *EchoProto) bool
+type TMsgFunc func(a *game.AccountData, mt int, data *EchoProto) bool
 
 type MessageFunc struct {
 	CM   string
@@ -34,11 +35,11 @@ type MessageFunc struct {
 
 var gMsgFuncs map[string]*MessageFunc
 
-var gAccounts map[string]*AccountData
+var gAccounts map[string]*game.AccountData
 
 func init() {
 	gMsgFuncs = make(map[string]*MessageFunc, 0)
-	gAccounts = make(map[string]*AccountData, 0)
+	gAccounts = make(map[string]*game.AccountData, 0)
 }
 
 func echo(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +48,7 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		return true
 	}
 
-	a := &AccountData{}
+	a := &game.AccountData{}
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)

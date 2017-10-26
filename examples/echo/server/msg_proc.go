@@ -7,9 +7,11 @@ package main
 import (
 	"encoding/json"
 	"log"
+
+	"github.com/gorilla/websocket/examples/echo/server/game"
 )
 
-func Broadcast_Scene_Skill(a *AccountData, data *EchoProto) {
+func Broadcast_Scene_Skill(a *game.AccountData, data *EchoProto) {
 
 	ret, _ := json.Marshal(struct {
 		C    string                 `json:"c"`
@@ -36,7 +38,7 @@ func Broadcast_Scene_Skill(a *AccountData, data *EchoProto) {
 	}
 }
 
-func Scene_Skill(a *AccountData, mt int, data *EchoProto) bool {
+func Scene_Skill(a *game.AccountData, mt int, data *EchoProto) bool {
 
 	data.Data["account"] = a.Account
 
@@ -64,7 +66,7 @@ func Scene_Skill(a *AccountData, mt int, data *EchoProto) bool {
 	return true
 }
 
-func Scene_PlayerPoint(a *AccountData, mt int, data *EchoProto) bool {
+func Scene_PlayerPoint(a *game.AccountData, mt int, data *EchoProto) bool {
 
 	data.Data["account"] = a.Account
 
@@ -95,7 +97,7 @@ func Scene_PlayerPoint(a *AccountData, mt int, data *EchoProto) bool {
 	return true
 }
 
-func Broadcast_Scene_PlayerEnter(a *AccountData, data *EchoProto) {
+func Broadcast_Scene_PlayerEnter(a *game.AccountData, data *EchoProto) {
 
 	ret, _ := json.Marshal(struct {
 		C    string                 `json:"c"`
@@ -122,7 +124,7 @@ func Broadcast_Scene_PlayerEnter(a *AccountData, data *EchoProto) {
 	}
 }
 
-func Broadcast_Scene_PlayerEnter_ToMe(a *AccountData) {
+func Broadcast_Scene_PlayerEnter_ToMe(a *game.AccountData) {
 
 	for k, _ := range gAccounts {
 		if gAccounts[k].Account == a.Account {
@@ -151,7 +153,7 @@ func Broadcast_Scene_PlayerEnter_ToMe(a *AccountData) {
 	}
 }
 
-func Broadcast_Scene_PlayerLeave(a *AccountData) {
+func Broadcast_Scene_PlayerLeave(a *game.AccountData) {
 
 	data := map[string]interface{}{"account": a.Account}
 
@@ -180,7 +182,7 @@ func Broadcast_Scene_PlayerLeave(a *AccountData) {
 	}
 }
 
-func Index_Login(a *AccountData, mt int, data *EchoProto) bool {
+func Index_Login(a *game.AccountData, mt int, data *EchoProto) bool {
 
 	retData := struct {
 		C    string                 `json:"c"`
