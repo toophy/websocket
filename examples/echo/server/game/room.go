@@ -24,6 +24,7 @@ func (r *Room) Login(accInfo AccountData) bool {
 	}
 	n := new(AccountData)
 	*n = accInfo
+	n.MyRoom = r
 	r.Accouts[accInfo.Account] = n
 
 	r.MyMap.AccountLogin(n, true)
