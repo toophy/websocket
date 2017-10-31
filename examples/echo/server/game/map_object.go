@@ -16,6 +16,7 @@ type MapObj struct {
 	Attrs     RoleAttr          // 属性
 	Myroom    *Room             // 房间
 	MyAccount *AccountData      // 帐号
+	MyMover   Mover             // 移动子
 	Childs    map[int64]*MapObj // 子对象, 决定陆地长度, 暂定为直线段
 }
 
@@ -102,7 +103,27 @@ func (m *MapObj) EraseObj(n *MapObj) bool {
 	return true
 }
 
+// 移动子
+type Mover struct {
+	SrcX       int32
+	SrcY       int32
+	DstX       int32
+	DstY       int32
+	BeginFrame int64
+	EndFrame   int64
+	Speed      int32
+}
+
 // 移动
 func (m *MapObj) Move() {
+	// 当前Mover走完了么?
+	// 制作 Mover信息
+	// 超出父对象范围
+	// 1. 有目标陆地
+	// 2. 没有目标标陆地
+}
+
+// 刷新移动
+func (m *MapObj) UpdateMove() {
 
 }
