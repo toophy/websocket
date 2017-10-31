@@ -10,4 +10,6 @@ type AccountData struct {
 	C       *websocket.Conn
 	PosX    float64
 	PosY    float64
+	Power   int64 // 权限
+	RoleId  int64 // 在当前房间的角色Id
 }

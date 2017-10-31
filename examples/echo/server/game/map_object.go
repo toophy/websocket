@@ -24,3 +24,5 @@ func (m *MapObj) Init() {
 	m.Attrs.Init()
 	m.Childs = make(map[int64]*MapObj, 0)
 }
+
+// 在任意位置增加/删除对象
