@@ -7,6 +7,7 @@ type Room struct {
 	Accouts       map[string]*AccountData // 帐号
 	LastRoleId    int64                   // 最后一个角色ID
 	LastMonsterId int64                   // 最后一个怪物ID
+	FrameSn       int64                   // 帧序号
 	// 挂靠的玩法
 }
 

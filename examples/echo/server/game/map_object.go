@@ -8,6 +8,20 @@ const (
 	LOT_Monster = 5 // 小怪物
 )
 
+const (
+	Max_OldPos = 10
+)
+
+const (
+	Move_None  = 0 // 没有移动需求
+	Move_Turn  = 1 // 转向
+	Move_Speed = 2 // 变速
+)
+
+const (
+	Default_Move_Time = 10
+)
+
 // 地图对象
 type MapObj struct {
 	ID        int64             // ID
@@ -17,6 +31,7 @@ type MapObj struct {
 	Myroom    *Room             // 房间
 	MyAccount *AccountData      // 帐号
 	MyMover   Mover             // 移动子
+	OldPoss   map[int64]Vec2    // 旧位置(每帧), 可以保留之前的 Max_OldPos 帧位置
 	Childs    map[int64]*MapObj // 子对象, 决定陆地长度, 暂定为直线段
 }
 
@@ -24,6 +39,7 @@ type MapObj struct {
 func (m *MapObj) Init() {
 	m.Attrs.Init()
 	m.Childs = make(map[int64]*MapObj, 0)
+	m.OldPoss = make(map[int64]Vec2, Max_OldPos)
 }
 
 // 坐标转换
@@ -105,25 +121,83 @@ func (m *MapObj) EraseObj(n *MapObj) bool {
 
 // 移动子
 type Mover struct {
-	SrcX       int32
-	SrcY       int32
-	DstX       int32
-	DstY       int32
-	BeginFrame int64
-	EndFrame   int64
-	Speed      int32
+	SrcX       int32 // 开始移动的位置x
+	SrcY       int32 // 开始移动的位置y
+	Left       bool  // 朝向
+	Moving     bool  // 移动中
+	BeginFrame int64 // 开始行动的帧序号
+	EndFrame   int64 // 结束帧
+	Speed      int32 // 速度(恒定)
+	TurnState  int   // 预备转向
+	TurnFrame  int64 // 开始帧
+	TurnSpeed  int32 // 新速度
 }
 
 // 移动
-func (m *MapObj) Move() {
-	// 当前Mover走完了么?
-	// 制作 Mover信息
-	// 超出父对象范围
-	// 1. 有目标陆地
-	// 2. 没有目标标陆地
+func (m *MapObj) Move(srcX, srcY int32, left bool, beginFrame int64) bool {
+	if !m.MyMover.Moving {
+		// [广播消息]
+		m.MyMover.SrcX = srcX
+		m.MyMover.SrcY = srcY
+		m.MyMover.Left = left
+		m.MyMover.BeginFrame = beginFrame
+		m.MyMover.EndFrame = beginFrame + Default_Move_Time
+		m.MyMover.Speed = int32(m.Attrs.GetAttrVal(Attr_speed))
+		m.MyMover.Moving = true
+		m.MyMover.TurnState = Move_None
+		m.MyMover.TurnFrame = 0
+		m.MyMover.TurnSpeed = 0
+	} else {
+		if m.MyMover.Left != left {
+			// 方向相反 [广播消息]
+			m.MyMover.TurnState = Move_Turn
+			m.MyMover.TurnFrame = beginFrame
+			m.MyMover.TurnSpeed = int32(m.Attrs.GetAttrVal(Attr_speed))
+		} else {
+			// 方向一致, 可能速度有变动
+			if m.MyMover.Speed != int32(m.Attrs.GetAttrVal(Attr_speed)) {
+				// 仅仅是速度变化, 产生新的移动, 当前移动要保持惯性 [广播消息]
+				m.MyMover.TurnState = Move_Speed
+				m.MyMover.TurnFrame = beginFrame
+				m.MyMover.TurnSpeed = int32(m.Attrs.GetAttrVal(Attr_speed))
+			} else {
+				// 拉长移动距离, [广播消息]
+				m.MyMover.EndFrame = m.MyMover.EndFrame + m.Myroom.FrameSn - m.MyMover.BeginFrame
+			}
+		}
+	}
+
+	return true
 }
 
 // 刷新移动
 func (m *MapObj) UpdateMove() {
+	if !m.MyMover.Moving {
+		return
+	}
 
+	// 终止时间到了
+	// 要求转向
+	// 要求变速
+
+	if m.MyMover.Left {
+		m.Pos.X -= m.MyMover.Speed
+	} else {
+		m.Pos.X += m.MyMover.Speed
+	}
+
+	// 离开当前parent么?
+	if m.Pos.Parent == nil {
+		// 在map空域中
+		// 落到地图下, 结束生命
+		// 左右上都没有关系,
+		//
+		// 到达其他陆地
+		// 检查所有陆地
+	} else {
+		// 在一个陆地上
+		// if m.Pos.X<0 || m.Pos.X> m.Pos.Parent {
+		// }
+		// 可能跳到另外一个陆地上
+	}
 }

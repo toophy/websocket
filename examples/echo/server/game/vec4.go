@@ -7,3 +7,9 @@ type Vec4 struct {
 	Height int32   // 高度, 在陆地上的高度
 	Parent *MapObj // 父对象
 }
+
+// 位置
+type Vec2 struct {
+	X int32
+	Y int32
+}

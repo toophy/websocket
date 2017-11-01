@@ -1,10 +1,11 @@
 package game
 
 const (
-	Attr_hp      = 1 // 生命值
-	Attr_mp      = 2 // 能量值
-	Attr_attack  = 3 // 攻击力
-	Attr_defence = 4 // 防御力
+	Attr_hp      = uint32(1) // 生命值
+	Attr_mp      = uint32(2) // 能量值
+	Attr_attack  = uint32(3) // 攻击力
+	Attr_defence = uint32(4) // 防御力
+	Attr_speed   = uint32(5) // 速度
 )
 
 const (
@@ -74,4 +75,11 @@ func (r *RoleAttr) calcAttrLast(attrID uint32) {
 	// 1. HP  : MaxHP 是上限, 下限是0, 增加百分比时用的是MaxHP作为基数, 只有 Apply 生效, Cancel 无效
 	// 2. EXP : 无上限, 无下限, 只能增加值, Apply生效, Cancel无效
 	// HP
+}
+
+func (r *RoleAttr) GetAttrVal(attrID uint32) int64 {
+	if r.CheckAttrIdx(attrID) {
+		return r.Lasts[attrID-1]
+	}
+	return 0
 }
