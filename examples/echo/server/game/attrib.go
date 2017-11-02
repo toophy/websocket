@@ -83,3 +83,10 @@ func (r *RoleAttr) GetAttrVal(attrID uint32) int64 {
 	}
 	return 0
 }
+
+func (r *RoleAttr) GetAttrVal32(attrID uint32) int32 {
+	if r.CheckAttrIdx(attrID) {
+		return int32(r.Lasts[attrID-1])
+	}
+	return 0
+}

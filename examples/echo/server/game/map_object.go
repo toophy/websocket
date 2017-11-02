@@ -20,11 +20,14 @@ const (
 
 const (
 	Default_Move_Time = 10
+	Default_Turn_Time = 3
+	Default_Save_Pos  = 10
 )
 
 // 地图对象
 type MapObj struct {
 	ID        int64             // ID
+	CId       int16             // child ID
 	Pos       Vec4              // 位置
 	Type      int32             // 类型
 	Attrs     RoleAttr          // 属性
@@ -32,14 +35,16 @@ type MapObj struct {
 	MyAccount *AccountData      // 帐号
 	MyMover   Mover             // 移动子
 	OldPoss   map[int64]Vec2    // 旧位置(每帧), 可以保留之前的 Max_OldPos 帧位置
-	Childs    map[int64]*MapObj // 子对象, 决定陆地长度, 暂定为直线段
+	Childs    map[int64]*MapObj // 子对象
+	Orders    []*MapObj         // 直线段队形
 }
 
 // 初始化
 func (m *MapObj) Init() {
 	m.Attrs.Init()
-	m.Childs = make(map[int64]*MapObj, 0)
 	m.OldPoss = make(map[int64]Vec2, Max_OldPos)
+	m.Childs = make(map[int64]*MapObj, 0)
+	m.Orders = make([]*MapObj, 0)
 }
 
 // 坐标转换
@@ -133,6 +138,20 @@ type Mover struct {
 	TurnSpeed  int32 // 新速度
 }
 
+// 初始化
+func (m *Mover) Init() {
+	m.SrcX = 0
+	m.SrcY = 0
+	m.Left = false
+	m.BeginFrame = 0
+	m.EndFrame = 0
+	m.Speed = 0
+	m.Moving = false
+	m.TurnState = 0
+	m.TurnFrame = 0
+	m.TurnSpeed = 0
+}
+
 // 移动
 func (m *MapObj) Move(srcX, srcY int32, left bool, beginFrame int64) bool {
 	if !m.MyMover.Moving {
@@ -141,25 +160,25 @@ func (m *MapObj) Move(srcX, srcY int32, left bool, beginFrame int64) bool {
 		m.MyMover.SrcY = srcY
 		m.MyMover.Left = left
 		m.MyMover.BeginFrame = beginFrame
-		m.MyMover.EndFrame = beginFrame + Default_Move_Time
-		m.MyMover.Speed = int32(m.Attrs.GetAttrVal(Attr_speed))
+		m.MyMover.EndFrame = m.MyMover.EndFrame + Default_Move_Time
+		m.MyMover.Speed = m.Attrs.GetAttrVal32(Attr_speed)
 		m.MyMover.Moving = true
 		m.MyMover.TurnState = Move_None
 		m.MyMover.TurnFrame = 0
 		m.MyMover.TurnSpeed = 0
-	} else {
+	} else if m.MyMover.TurnState == Move_None {
 		if m.MyMover.Left != left {
 			// 方向相反 [广播消息]
 			m.MyMover.TurnState = Move_Turn
 			m.MyMover.TurnFrame = beginFrame
-			m.MyMover.TurnSpeed = int32(m.Attrs.GetAttrVal(Attr_speed))
+			m.MyMover.TurnSpeed = m.Attrs.GetAttrVal32(Attr_speed)
 		} else {
 			// 方向一致, 可能速度有变动
-			if m.MyMover.Speed != int32(m.Attrs.GetAttrVal(Attr_speed)) {
+			if m.MyMover.Speed != m.Attrs.GetAttrVal32(Attr_speed) {
 				// 仅仅是速度变化, 产生新的移动, 当前移动要保持惯性 [广播消息]
 				m.MyMover.TurnState = Move_Speed
 				m.MyMover.TurnFrame = beginFrame
-				m.MyMover.TurnSpeed = int32(m.Attrs.GetAttrVal(Attr_speed))
+				m.MyMover.TurnSpeed = m.Attrs.GetAttrVal32(Attr_speed)
 			} else {
 				// 拉长移动距离, [广播消息]
 				m.MyMover.EndFrame = m.MyMover.EndFrame + m.Myroom.FrameSn - m.MyMover.BeginFrame
@@ -170,15 +189,32 @@ func (m *MapObj) Move(srcX, srcY int32, left bool, beginFrame int64) bool {
 	return true
 }
 
+// 移动
+func (m *MapObj) changeMove(left bool) {
+	m.MyMover.SrcX = m.Pos.X
+	m.MyMover.SrcY = m.Pos.Y
+	m.MyMover.Left = left
+	m.MyMover.BeginFrame = m.Myroom.FrameSn
+	m.MyMover.EndFrame = m.MyMover.BeginFrame + Default_Move_Time
+	m.MyMover.Speed = m.MyMover.TurnSpeed
+	m.MyMover.Moving = true
+	m.MyMover.TurnState = Move_None
+	m.MyMover.TurnFrame = 0
+	m.MyMover.TurnSpeed = 0
+}
+
 // 刷新移动
 func (m *MapObj) UpdateMove() {
+
+	if len(m.OldPoss) > 0 {
+		delete(m.OldPoss, m.Myroom.FrameSn-Default_Save_Pos)
+	}
+
 	if !m.MyMover.Moving {
 		return
 	}
 
-	// 终止时间到了
-	// 要求转向
-	// 要求变速
+	m.OldPoss[m.Myroom.FrameSn] = Vec2{m.Pos.X, m.Pos.Y}
 
 	if m.MyMover.Left {
 		m.Pos.X -= m.MyMover.Speed
@@ -186,7 +222,7 @@ func (m *MapObj) UpdateMove() {
 		m.Pos.X += m.MyMover.Speed
 	}
 
-	// 离开当前parent么?
+	// 离开当前parent么? 
 	if m.Pos.Parent == nil {
 		// 在map空域中
 		// 落到地图下, 结束生命
@@ -197,7 +233,32 @@ func (m *MapObj) UpdateMove() {
 	} else {
 		// 在一个陆地上
 		// if m.Pos.X<0 || m.Pos.X> m.Pos.Parent {
-		// }
+		// } 
 		// 可能跳到另外一个陆地上
+	}
+	// 位置 --> 查找陆地, 地图对象, 碰撞?
+	// 所有陆地查询一次
+	// 陆地有长度
+	//
+
+	switch m.MyMover.TurnState {
+	case Move_None:
+		if m.Myroom.FrameSn >= m.MyMover.EndFrame {
+			m.MyMover.Init()
+			return
+		}
+		break
+	case Move_Turn:
+		// 要求转向
+		if m.Myroom.FrameSn >= m.MyMover.TurnFrame+Default_Turn_Time {
+			m.changeMove(!m.MyMover.Left)
+		}
+		break
+	case Move_Speed:
+		// 要求变速
+		if m.Myroom.FrameSn >= m.MyMover.TurnFrame+Default_Turn_Time {
+			m.changeMove(m.MyMover.Left)
+		}
+		break
 	}
 }
