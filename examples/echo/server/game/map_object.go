@@ -28,7 +28,7 @@ const (
 type MapObj struct {
 	ID        int64             // ID
 	CId       int16             // child ID
-	Pos       Vec4              // 位置
+	Pos       Vec5              // 位置
 	Type      int32             // 类型
 	Attrs     RoleAttr          // 属性
 	Myroom    *Room             // 房间
@@ -222,7 +222,7 @@ func (m *MapObj) UpdateMove() {
 		m.Pos.X += m.MyMover.Speed
 	}
 
-	// 离开当前parent么? 
+	// 离开当前parent么?
 	if m.Pos.Parent == nil {
 		// 在map空域中
 		// 落到地图下, 结束生命
@@ -233,7 +233,7 @@ func (m *MapObj) UpdateMove() {
 	} else {
 		// 在一个陆地上
 		// if m.Pos.X<0 || m.Pos.X> m.Pos.Parent {
-		// } 
+		// }
 		// 可能跳到另外一个陆地上
 	}
 	// 位置 --> 查找陆地, 地图对象, 碰撞?
