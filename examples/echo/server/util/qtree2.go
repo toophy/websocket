@@ -102,7 +102,20 @@ func (q *Q9Tree) Init(tileW, tileH, realW, realH int32) bool {
 }
 
 func (q *Q9Tree) GetCell(x, y, z int32) int32 {
+	// z 表示层
+	// x 表示水平位置
+	// y 表示垂直位置
 	return -1
+}
+
+// 获取指定cell的上一层
+func (q *Q9Tree) GetParent(c int32) *Cell {
+	return nil
+}
+
+// 获取指定cell的下一层(象限)
+func (q *Q9Tree) GetChilds(g int32) *Cell {
+	return nil
 }
 
 func (q *Q9Tree) Insert(o *Obj) bool {
@@ -144,5 +157,6 @@ func (q *Q9Tree) Destroy() {
 		q.level = 0
 		q.Cells = []Cell{}
 		q.CellCount = 0
+		q.initOk = false
 	}
 }
