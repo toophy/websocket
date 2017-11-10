@@ -1,4 +1,4 @@
-// 四叉树扩展
+// Package util 四叉树扩展
 package util
 
 // 1. 静态的一维或者二维表
