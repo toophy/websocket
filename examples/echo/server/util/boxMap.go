@@ -6,15 +6,19 @@ import (
 
 // BoxMap 盒子地图
 type BoxMap struct {
-	Box                      // 盒子
-	Objs      map[int32]*Obj // 地图所有对象
-	LastObjID int32          // 最后一个对象ID
-	FrameSN   int32          // 帧序号
+	Box                       // 盒子
+	Objs       map[int32]*Obj // 地图所有对象
+	LastObjID  int32          // 最后一个对象ID
+	FrameSN    int32          // 帧序号
+	GravityVal int32          // 本地图基本重力
 }
 
 // InitMap 初始化盒子地图
-func (b *BoxMap) InitMap(tileW, tileH, realW, realH int32) bool {
+func (b *BoxMap) InitMap(tileW, tileH, realW, realH, gravity int32) bool {
 	b.Objs = make(map[int32]*Obj, 0)
+	b.LastObjID = 0
+	b.FrameSN = 0
+	b.GravityVal = gravity
 	return b.Init(tileW, tileH, realW, realH)
 }
 
@@ -34,6 +38,52 @@ func (b *BoxMap) GetObjByID(id int32) *Obj {
 	return nil
 }
 
+// ObjMove 对象在Box上移动,step是步长
+func (b *BoxMap) ObjMove(o *Obj, dir int, stepX int32) bool {
+	if o == nil {
+		return false
+	}
+	newRect := o.Pos
+	switch dir {
+	case DirLeft:
+		newRect.X -= stepX
+		break
+	case DirRight:
+		newRect.X += stepX
+		break
+	case DirUp:
+		newRect.Y -= stepX
+		break
+	case DirDown:
+		newRect.Y += stepX
+		break
+	}
+	return b.Insert(o, &newRect)
+}
+
+// ObjMove 对象在Box上移动,step是步长
+func (b *BoxMap) ObjJump(o *Obj, speedY int32) bool {
+	if o == nil {
+		return false
+	}
+
+	if o.Jump {
+		return false
+	}
+
+	o.SpeedY = speedY
+	o.SpeedX = o.GetRealSpeedX()
+	o.Jump = true
+
+	if o.Parent != nil {
+		o.Parent.EraseChild(o.ID)
+		o.Parent = nil
+	}
+
+	// 落地之前, 玩家都不能操作,
+	return true
+}
+
 // Update 刷新BoxMap
 func (b *BoxMap) Update() {
 	b.FrameSN++
@@ -46,14 +96,86 @@ func (b *BoxMap) Update() {
 
 	for _, k := range keys {
 		o := b.Objs[int32(k)]
-		b.updateObj(o)
+		if o.Parent == nil {
+			b.updateObjMove(o)
+		}
+	}
+
+	for _, k := range keys {
+		o := b.Objs[int32(k)]
+		if o.Parent == nil {
+			b.updateObjMoveEvent(o)
+		}
+	}
+
+	// 可能有对象脱离Parent, 看看是否到达新Parent,
+	// 对象类别
+	// 0 : 可以容纳其他对象, 不受重力影响 --> 陆地块
+	// 1 : 可以容纳其他对象, 受重力影响   --> 容器块 交通工具
+	// 2 : 不可以容纳其他对象, 受重力影响 --> 角色怪物
+
+	// 也就是parent为nil的类型1对象, 检查是否有新的类型0对象降落
+}
+
+// updateObjMove 刷新对象移动
+func (b *BoxMap) updateObjMove(o *Obj) {
+	speedX := o.GetRealSpeedX()
+	speedY := o.GetRealSpeedY()
+
+	newRect := o.Pos
+	newRect.X += speedX
+
+	if o.Gravity && !o.Terre {
+		speedY += b.GravityVal
+		newRect.Y += speedY
+
+		if o.Parent != nil {
+			if newRect.Y+newRect.H >= o.Parent.Pos.Y {
+				newRect.Y = o.Parent.Pos.Y - newRect.H
+				o.Terre = true
+			}
+		}
+	}
+	if newRect.X != o.Pos.X || newRect.Y != o.Pos.Y {
+		o.Moved = true
+	}
+
+	if b.Box.Insert(o, &newRect) {
+		var keys []int
+		for k := range o.Childs {
+			keys = append(keys, int(k))
+		}
+		sort.Ints(keys)
+
+		for _, k := range keys {
+			c := o.Childs[int32(k)]
+			b.updateObjMove(c)
+		}
 	}
 }
 
-// UpdateObj 刷新对象
-func (b *BoxMap) updateObj(o *Obj) {
-	// 对象内部呢, 如果一次"行走"连续多个点, 就调用多次
-	// 对象瞬移, 只需要调用一次(最终位置帧)
-	// 
-	// 1. 移动, 速度, 开始....帧
+// updateObjMoveEvent 刷新对象新位置事件
+func (b *BoxMap) updateObjMoveEvent(o *Obj) {
+
+	// 新位置是否有事件触发?
+	if o.Moved {
+		// 触发事件(切换parent,拾取到xx,陷阱xx)
+		if o.Parent != nil {
+			if o.Pos.X > o.Parent.Pos.W || o.Pos.X+o.Pos.W < 0 {
+				o.Parent.EraseChild(o.ID)
+				o.Parent = nil
+			}
+		}
+		o.Moved = false
+	}
+
+	var keys []int
+	for k := range o.Childs {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	for _, k := range keys {
+		c := o.Childs[int32(k)]
+		b.updateObjMoveEvent(c)
+	}
 }

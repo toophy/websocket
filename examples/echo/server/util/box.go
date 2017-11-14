@@ -40,9 +40,39 @@ func (r *Rect) Cross(x, y, w, h int32) bool {
 
 // Obj 地图对象
 type Obj struct {
-	ID    int32
-	Pos   Rect
-	Cells []int32 // 最后一次染色单元格
+	ID      int32          // ID
+	Contain bool           // 能够容纳其他对象
+	Gravity bool           // 受重力影响
+	Terre   bool           // 紧贴地面
+	Jump    bool           // 跳动
+	Pos     Rect           // 位置和体量
+	Moved   bool           // 本帧发生移动
+	SpeedX  int32          // 水平速度
+	SpeedY  int32          // 垂直速度
+	Cells   []int32        // 最后一次染色单元格
+	Parent  *Obj           // 父对象
+	Childs  map[int32]*Obj // 子对象
+}
+
+// 擦除一个子对象
+func (o *Obj) EraseChild(cID int32) {
+	delete(o.Childs, cID)
+}
+
+// 获取实际水平速度
+func (o *Obj) GetRealSpeedX() int32 {
+	if o.Parent == nil {
+		return o.SpeedX
+	}
+	return o.SpeedX + o.Parent.GetRealSpeedX()
+}
+
+// 获取实际垂直速度
+func (o *Obj) GetRealSpeedY() int32 {
+	if o.Parent == nil {
+		return o.SpeedY
+	}
+	return o.SpeedY + o.Parent.GetRealSpeedY()
 }
 
 // Cell 地图单元格
@@ -132,16 +162,18 @@ func (b *Box) CanInsert(x, y, w, h int32, o *Obj) bool {
 // Insert 进行插入
 func (b *Box) Insert(o *Obj, newRect *Rect) bool {
 	if o != nil {
+		tmpRect := o.Pos
 		if newRect != nil {
-			o.Pos = *newRect
+			tmpRect = *newRect
 		}
-		if b.CanInsert(o.Pos.X, o.Pos.Y, o.Pos.W, o.Pos.H, o) {
+		if b.CanInsert(tmpRect.X, tmpRect.Y, tmpRect.W, tmpRect.H, o) {
+			o.Pos = tmpRect
 			// 褪色
 			for _, v := range o.Cells {
 				delete(b.Cells[v].Objs, o.ID)
 			}
 			// 染色
-			newCells := b.GetCrossCells(o.Pos.X, o.Pos.Y, o.Pos.W, o.Pos.H)
+			newCells := b.GetCrossCells(tmpRect.X, tmpRect.Y, tmpRect.W, tmpRect.H)
 			for _, v := range newCells {
 				b.Cells[v].Objs[o.ID] = o
 			}
@@ -185,27 +217,4 @@ func (b *Box) Destroy() {
 		b.CellCount = 0
 		b.initOk = false
 	}
-}
-
-// ObjMove 对象在Box上移动,step是步长
-func (b *Box) ObjMove(o *Obj, dir int, step int32) bool {
-	if o == nil {
-		return false
-	}
-	newRect := o.Pos
-	switch dir {
-	case DirLeft:
-		newRect.X -= step
-		break
-	case DirRight:
-		newRect.X += step
-		break
-	case DirUp:
-		newRect.Y -= step
-		break
-	case DirDown:
-		newRect.Y += step
-		break
-	}
-	return b.Insert(o, &newRect)
 }
