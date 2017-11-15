@@ -43,7 +43,6 @@ type Obj struct {
 	ID      int32          // ID
 	Contain bool           // 能够容纳其他对象
 	Gravity bool           // 受重力影响
-	Terre   bool           // 紧贴地面
 	Jump    bool           // 跳动
 	Pos     Rect           // 位置和体量
 	Moved   bool           // 本帧发生移动

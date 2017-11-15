@@ -63,11 +63,7 @@ func (b *BoxMap) ObjMove(o *Obj, dir int, stepX int32) bool {
 
 // ObjMove 对象在Box上移动,step是步长
 func (b *BoxMap) ObjJump(o *Obj, speedY int32) bool {
-	if o == nil {
-		return false
-	}
-
-	if o.Jump {
+	if o == nil || o.Jump {
 		return false
 	}
 
@@ -111,46 +107,45 @@ func (b *BoxMap) Update() {
 	// 可能有对象脱离Parent, 看看是否到达新Parent,
 	// 对象类别
 	// 0 : 可以容纳其他对象, 不受重力影响 --> 陆地块
-	// 1 : 可以容纳其他对象, 受重力影响   --> 容器块 交通工具
-	// 2 : 不可以容纳其他对象, 受重力影响 --> 角色怪物
+	// 1 : 不可以容纳其他对象, 受重力影响 --> 角色怪物
 
 	// 也就是parent为nil的类型1对象, 检查是否有新的类型0对象降落
 }
 
 // updateObjMove 刷新对象移动
 func (b *BoxMap) updateObjMove(o *Obj) {
-	speedX := o.GetRealSpeedX()
-	speedY := o.GetRealSpeedY()
+	speedX := o.SpeedX
+	speedY := o.SpeedY
 
 	newRect := o.Pos
 	newRect.X += speedX
 
-	if o.Gravity && !o.Terre {
+	if o.Gravity && o.Jump {
+		o.SpeedY += b.GravityVal
 		speedY += b.GravityVal
 		newRect.Y += speedY
-
-		if o.Parent != nil {
-			if newRect.Y+newRect.H >= o.Parent.Pos.Y {
-				newRect.Y = o.Parent.Pos.Y - newRect.H
-				o.Terre = true
-			}
-		}
 	}
 	if newRect.X != o.Pos.X || newRect.Y != o.Pos.Y {
 		o.Moved = true
 	}
 
 	if b.Box.Insert(o, &newRect) {
-		var keys []int
-		for k := range o.Childs {
-			keys = append(keys, int(k))
-		}
-		sort.Ints(keys)
+		if o.Contain {
+			var keys []int
+			for k := range o.Childs {
+				keys = append(keys, int(k))
+			}
+			sort.Ints(keys)
 
-		for _, k := range keys {
-			c := o.Childs[int32(k)]
-			b.updateObjMove(c)
+			for _, k := range keys {
+				c := o.Childs[int32(k)]
+				b.updateObjMove(c)
+			}
 		}
+	} else {
+		// 可能发生碰撞
+		//
+
 	}
 }
 
