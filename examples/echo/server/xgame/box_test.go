@@ -1,4 +1,4 @@
-package util
+package xgame
 
 import "testing"
 
@@ -8,15 +8,6 @@ type MapObj struct {
 
 func (m *MapObj) Init() {
 	m.Objs = make(map[int16]*Obj, 0)
-}
-
-type TRand struct {
-	Seed int64
-}
-
-func (t *TRand) Random(maxValue int64) int64 {
-	t.Seed = int64(int32(t.Seed*0x08088405 + 1))
-	return ((t.Seed * maxValue) >> 32) + maxValue/2
 }
 
 func Test_Random(t *testing.T) {
