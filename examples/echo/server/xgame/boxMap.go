@@ -12,6 +12,11 @@ const (
 	DirDown  = 4 // 向下
 )
 
+// 玩家操作
+const (
+	POS_Move = 1 // 移动
+)
+
 // Rect 矩形
 type Rect struct {
 	X int32
@@ -83,6 +88,20 @@ type Cell struct {
 	Objs map[int32]*Obj
 }
 
+// FrameInput 玩家帧输入
+type FrameInput struct {
+	ID       int32 // 玩家ID
+	OpID     int32 // 玩家操作
+	OpParam1 int32 // 操作参数1
+	OpParam2 int32 // 操作参数2
+}
+
+// FrameData 帧输入
+type FrameData struct {
+	Sn  int32         // 帧序号
+	Ops []*FrameInput // 玩家帧输入
+}
+
 // BoxMap 盒子地图
 type BoxMap struct {
 	initOk     bool
@@ -94,17 +113,16 @@ type BoxMap struct {
 	RealH      int32
 	CellCount  uint32
 	Cells      []Cell
-	Objs       map[int32]*Obj // 地图所有对象
-	LastObjID  int32          // 最后一个对象ID
-	FrameSN    int32          // 帧序号
-	GravityVal int32          // 本地图基本重力
+	Objs       map[int32]*Obj       // 地图所有对象
+	LastObjID  int32                // 最后一个对象ID
+	GravityVal int32                // 本地图基本重力
+	FrameDatas map[int32]*FrameData // 帧数据
 }
 
 // InitMap 初始化盒子地图
 func (b *BoxMap) InitMap(tileW, tileH, realW, realH, gravity int32) bool {
 	b.Objs = make(map[int32]*Obj, 0)
 	b.LastObjID = 0
-	b.FrameSN = 0
 	b.GravityVal = gravity
 
 	if tileW < 1 || tileH < 1 || realW < 0 || realH < 0 || tileW > realW || tileH > realH {
@@ -121,6 +139,8 @@ func (b *BoxMap) InitMap(tileW, tileH, realW, realH, gravity int32) bool {
 
 	b.CellCount = uint32(b.W * b.H)
 	b.Cells = make([]Cell, b.CellCount)
+
+	b.FrameDatas = make(map[int32]*FrameData, 0)
 
 	b.initOk = true
 
@@ -287,18 +307,30 @@ func (b *BoxMap) ObjJump(o *Obj, speedY int32) bool {
 	return true
 }
 
-// Update 刷新BoxMap
-func (b *BoxMap) Update() {
-	b.FrameSN++
+// 玩家输入操作
+func (b *BoxMap) InputOp(f *FrameInput) {
+	if f != nil {
+		switch f.OpID {
+		case POS_Move:
+			o := b.GetObjByID(f.ID)
+			if o != nil {
+				b.ObjMove(o, int(f.OpParam1), f.OpParam2)
+			}
+			break
+		}
+	}
+}
 
+// Update 刷新BoxMap
+func (b *BoxMap) Update(frameSn int32) {
 	var keys []int
 	for k := range b.Objs {
 		keys = append(keys, int(k))
 	}
 	sort.Ints(keys)
 
-	for _, k := range keys {
-		o := b.Objs[int32(k)]
+	for _, v := range keys {
+		o := b.Objs[int32(v)]
 		if o.Parent == nil {
 			b.updateObjMove(o)
 		}
@@ -317,6 +349,11 @@ func (b *BoxMap) Update() {
 	// 1 : 不可以容纳其他对象, 受重力影响 --> 角色怪物
 
 	// 也就是parent为nil的类型1对象, 检查是否有新的类型0对象降落
+	if _, ok := b.FrameDatas[frameSn]; ok {
+		for k, _ := range b.FrameDatas[frameSn].Ops {
+			b.InputOp(&b.FrameDatas[frameSn].Ops[k])
+		}
+	}
 }
 
 // updateObjMove 刷新对象移动
