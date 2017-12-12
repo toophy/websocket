@@ -1,12 +1,17 @@
 package xgame
 
+import "math/rand"
+
+// AccountData 帐号信息
 type AccountData struct {
-	Name  string
-	AccID int64
-	ObjID int32
+	Name  string // 帐号
+	AccID int64  // 帐号ID
+	Nick  string // 昵称
+	ObjID int32  // 对象ID
 }
 
-type MapThread struct {
+// Room 房间
+type Room struct {
 	FrameSN  int32                   // 帧序号
 	Map      *BoxMap                 // 地图
 	Accounts map[string]*AccountData // 帐号
@@ -16,12 +21,22 @@ type MapThread struct {
 }
 
 // Init 初始化
-func (m *MapThread) Init() {
+func (m *Room) Init() {
 	m.FrameSN = 0
 }
 
-// 刷新一帧
-func (m *MapThread) UpdateFrame() {
+// createMap 创建地图
+func (m *Room) createMap(name string, id int32) bool {
+	mc := GetMapConfig(name, id)
+	if mc.ID > 0 {
+		m.Map = new(BoxMap)
+		m.Map.InitMap(mc, rand.Int63())
+	}
+	return false
+}
+
+// UpdateFrame 刷新一帧
+func (m *Room) UpdateFrame() {
 	m.FrameSN++
 
 	// 广播玩家帧消息 --> 所有帐号
@@ -38,22 +53,32 @@ func (m *MapThread) UpdateFrame() {
 //     解释,保存网络消息, 用帧保存, 刷新帧的时候, 广播帧消息
 
 // InsertAccount 插入一个帐号
-func (m *MapThread) InsertAccount(acc string, accID int64) {
+func (m *Room) InsertAccount(acc string, accID int64, nick string) {
 	if _, ok := m.Accounts[acc]; !ok {
-		m.Accounts[acc] = &AccountData{Name: acc, AccID: accID, ObjID: 0}
+		m.Accounts[acc] = &AccountData{Name: acc, AccID: accID, Nick: nick, ObjID: 0}
 	}
 }
 
 // GetObjIDByAccount 通过玩家账号获取对象ID
-func (m *MapThread) GetObjIDByAccount(acc string) int32 {
+func (m *Room) GetObjIDByAccount(acc string) int32 {
 	if _, ok := m.Accounts[acc]; ok {
 		return m.Accounts[acc].ObjID
 	}
 	return 0
 }
 
+// NewRole 新建帐号的角色
+func (m *Room) NewRole(acc string, role_type string) *Obj {
+	if _, ok := m.Accounts[acc]; ok {
+		//随机位置
+		birthRect := m.Map.RandBirthPos(100, 100)
+		return m.Map.NewObj(birthRect.X, birthRect.Y, birthRect.W, birthRect.H)
+	}
+	return nil
+}
+
 // 模拟玩家操作
-func (m *MapThread) InputOp(acc string, opID int32, opParam1 int32, opParam2 int32) {
+func (m *Room) InputOp(acc string, opID int32, opParam1 int32, opParam2 int32) {
 	objID := m.GetObjIDByAccount(acc)
 	if objID == 0 {
 		return

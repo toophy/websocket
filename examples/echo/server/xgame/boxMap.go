@@ -117,17 +117,17 @@ type BoxMap struct {
 	LastObjID  int32                // 最后一个对象ID
 	GravityVal int32                // 本地图基本重力
 	FrameDatas map[int32]*FrameData // 帧数据
+	Randor     TRand                // 随机
+	Config     MapConfig            // 地图配置
 }
 
 // InitMap 初始化盒子地图
-func (b *BoxMap) InitMap(tileW, tileH, realW, realH, gravity int32) bool {
+func (b *BoxMap) InitMap(cfg MapConfig, randSeed int64) bool {
+	b.Config = cfg
+	b.Randor.Seed = randSeed
 	b.Objs = make(map[int32]*Obj, 0)
 	b.LastObjID = 0
-	b.GravityVal = gravity
-
-	if tileW < 1 || tileH < 1 || realW < 0 || realH < 0 || tileW > realW || tileH > realH {
-		return false
-	}
+	b.GravityVal = b.Config.Gravity
 
 	b.Destroy()
 	b.RealW = realW
@@ -170,10 +170,6 @@ func (b *BoxMap) GetCrossCells(x, y, w, h int32) (rets []int32) {
 
 // CanInsert 检查对象使用新矩形能否插入
 func (b *BoxMap) CanInsert(x, y, w, h int32, o *Obj) bool {
-	if o == nil {
-		return false
-	}
-
 	newCells := b.GetCrossCells(x, y, w, h)
 	if len(newCells) == 0 {
 		return false
@@ -247,6 +243,20 @@ func (b *BoxMap) Destroy() {
 		b.CellCount = 0
 		b.initOk = false
 	}
+}
+
+// RandBirthPos 随机出生位置
+func (b *BoxMap) RandBirthPos(w, h int32) (r Rect) {
+	r.W = w
+	r.H = h
+	for i := 0; i < 10; i++ {
+		r.X = b.Randor.Random32(b.RealW - r.W)
+		r.Y = b.Randor.Random32(b.RealH - r.H)
+		if b.CanInsert(r.X, r.Y, r.W, r.H, nil) {
+			return
+		}
+	}
+	return
 }
 
 // NewObj 新建对象
