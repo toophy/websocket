@@ -1,3 +1,5 @@
 package mud
 
-// 房间
+// Room 房间
+type Room struct {
+}
