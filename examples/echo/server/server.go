@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/gorilla/websocket/examples/echo/server/game"
+	"github.com/gorilla/websocket/examples/echo/server/mud"
 )
 
 var addr = flag.String("addr", "0.0.0.0:8080", "http service address")
@@ -87,11 +88,20 @@ func main() {
 	gMsgFuncs["Scene.Skill"] = &MessageFunc{CM: "Scene.Skill", Proc: Scene_Skill}
 	gMsgFuncs["Scene.PlayerPoint"] = &MessageFunc{CM: "Scene.PlayerPoint", Proc: Scene_PlayerPoint}
 
+	ks := mud.KuangSys{}
+	ks.InitSys()
+	ks.CreateKuang("GreenK", 0.0, 0, 1.0/60, 1, 0)
+	ks.CreateKuang("RedK", 0.0, 0, 1.0/90, 1, 0)
+	ks.CreateKuang("BlueK", 0.0, 0, 1.0/120, 1, 0)
+
+	go ks.Update()
+
 	flag.Parse()
 	log.SetFlags(0)
 	http.HandleFunc("/echo", echo)
 	http.HandleFunc("/", home)
 	log.Fatal(http.ListenAndServe(*addr, nil))
+
 }
 
 var homeTemplate = template.Must(template.New("").Parse(`

@@ -48,7 +48,7 @@ func (h *Hall) ToGetAccount(name string) {
 //
 func (h *Hall) AskMatch(name string, game string) {
 	if _, ok := h.Accounts[name]; ok {
-		go GetMatchSys().AskMatch(name, game, h.Accounts[name].Step, h.Accounts[name].Elo, h.Accounts[name].WinRate, h.Accounts[name].Kda)
+		go GetMatchSys().AskMatch(name, game, h.Accounts[name].Step, h.Accounts[name].Elo, float64(h.Accounts[name].WinRate), float64(h.Accounts[name].Kda))
 	}
 }
 

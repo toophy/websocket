@@ -31,6 +31,7 @@ func (r *Room) Run() {
 }
 
 func (r *RoomSys) MakeRoom(gameType, mapType int32, accounts []AccountReal) bool {
+	return false
 }
 
 // 响应帐号投递的消息
