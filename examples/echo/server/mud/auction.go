@@ -48,6 +48,7 @@ type JewelAuction struct {
 	KuangName     string                    // 矿名
 	LastItemID    int64                     // 货币类型(道具ID)
 	LastSessionID int64                     // 最后场次
+	FreezeJewel   int64                     // 冻结宝石(用于拍卖)
 	Sessions      map[int64]*AuctionSession // 拍卖场次
 }
 

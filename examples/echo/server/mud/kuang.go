@@ -10,7 +10,6 @@ type Kuang struct {
 	Name          string  // 矿名
 	Ore           float64 // 原矿石
 	Jewel         int64   // 宝石, 从矿石中提取整数部分
-	FreezeJewel   int64   // 冻结宝石(用于拍卖)
 	OreSpeed      float64 // 原矿石生产速度 Ore/秒
 	Lucky         float64 // 幸运值
 	LastJewelTime int64   // 最后一次宝石计算时间
