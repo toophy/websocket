@@ -1,70 +1,72 @@
 package mud
 
 import (
+	"errors"
 	"math"
+	"sync"
 	"time"
 )
 
-// Kuang 矿
-type Kuang struct {
-	Name          string  // 矿名
-	Ore           float64 // 原矿石
-	Jewel         int64   // 宝石, 从矿石中提取整数部分
-	OreSpeed      float64 // 原矿石生产速度 Ore/秒
-	Lucky         float64 // 幸运值
-	LastJewelTime int64   // 最后一次宝石计算时间
+type AuctionLog struct {
+	AccName string // 竞拍人帐号
+	Count   int64  // 货币数量
+	Time    int64  // 竞拍时间
 }
 
-// 每秒一次计算, 每分钟一次计算
-func (k *Kuang) Update() {
-	k.Ore += k.OreSpeed
-	if time.Now().Unix() > k.LastJewelTime+60 {
-		println(k.Name, k.Ore, k.Jewel, k.OreSpeed)
-		k.LastJewelTime = time.Now().Unix()
+// AuctionSession 拍卖, 拍卖时冻结指定的 Jewel 数量
+type AuctionSession struct {
+	ID          int64         // 拍卖序号, 第xx场拍卖
+	Jewel       int64         // 宝石
+	LastCounts  int64         // 货币数量
+	StartTime   int64         // 起拍时间
+	EndTime     int64         // 预计结拍时间
+	AuctionOver bool          // 竞拍结束
+	Logs        []*AuctionLog // 竞拍日志
+}
 
-		if k.Ore > 1 {
-			newJewel := math.Floor(k.Ore)
-			if newJewel > 0 {
-				k.Jewel += int64(newJewel)
-				k.Ore -= newJewel
-			}
-		}
-	}
+// Auction 宝石拍卖系统
+type JewelAuction struct {
+	ItemID        int64                     // 货币类型(道具ID)
+	LastSessionID int64                     // 最后场次
+	Sessions      map[int64]*AuctionSession // 拍卖场次
 }
 
 // 很多种矿
 type KuangSys struct {
-	Kuangs map[string]*Kuang
+	Name          string                  // 矿名
+	Ore           float64                 // 原矿石
+	Jewel         int64                   // 宝石, 从矿石中提取整数部分
+	OreSpeed      float64                 // 原矿石生产速度 Ore/秒
+	Lucky         float64                 // 幸运值
+	LastJewelTime int64                   // 最后一次宝石计算时间
+	JewelAuctions map[int64]*JewelAuction // 拍卖场
 }
 
 var (
+	gItems   map[int64]string
 	kuangSys *KuangSys
 )
 
 func init() {
+	gItems = make(map[int64]string, 0)
+	gItems[1] = "第一名"
+	gItems[2] = "打酱油"
+
 	kuangSys = &KuangSys{}
-	kuangSys.Kuangs = make(map[string]*Kuang, 0)
+	// 要用从序列化文件导入-->数据库
+	kuangSys.Name = "钻石"
+	kuangSys.Ore = 0.0
+	kuangSys.Jewel = 0
+	kuangSys.OreSpeed = 1.0 / 60
+	kuangSys.Lucky = 0.0
+	kuangSys.LastJewelTime = time.Now().Unix()
+
+	kuangSys.JewelAuctions = make(map[string]*JewelAuction, 0)
+
 }
 
 func GetKuangSys() *KuangSys {
 	return kuangSys
-}
-
-// InitSys 初始化矿
-func (k *KuangSys) InitSys() {
-	k.Kuangs = make(map[string]*Kuang, 0)
-}
-
-// CreateKuang 新搭建一个矿场
-func (k *KuangSys) CreateKuang(name string, ore float64, jewel int64, oreSpeed float64, lucky float64, lastJewelTime int64) bool {
-	if lastJewelTime == 0 {
-		lastJewelTime = time.Now().Unix()
-	}
-	if _, ok := k.Kuangs[name]; !ok {
-		k.Kuangs[name] = &Kuang{Name: name, Ore: ore, Jewel: jewel, OreSpeed: oreSpeed, Lucky: lucky, LastJewelTime: lastJewelTime}
-		return true
-	}
-	return false
 }
 
 // 每秒一次计算, 每分钟一次计算
@@ -74,57 +76,133 @@ func (k *KuangSys) Update() {
 	for {
 		select {
 		case <-t.C:
-			for i := range k.Kuangs {
-				k.Kuangs[i].Update()
+			k.Ore += k.OreSpeed
+			if time.Now().Unix() > k.LastJewelTime+60 {
+				println(k.Name, k.Ore, k.Jewel, k.OreSpeed)
+				k.LastJewelTime = time.Now().Unix()
+
+				if k.Ore > 1 {
+					newJewel := math.Floor(k.Ore)
+					if newJewel > 0 {
+						k.Jewel += int64(newJewel)
+						k.Ore -= newJewel
+					}
+				}
 			}
+
 			t.Reset(1 * time.Second)
 			break
 		}
 	}
 }
 
-// 请求冻结宝石
-func (k *KuangSys) AskFreezeJewel(name string, count int64) bool {
-	if _, ok := k.Kuangs[name]; ok {
-		// 已经冻结宝石(正在拍卖)
-		if k.Kuangs[name].FreezeJewel > 0 {
-			return false
+// AccAuction 增加一个拍卖场
+func (a *KuangSys) AddAuction(itemID int64) error {
+	if _, ok := gItems[itemID]; ok {
+		if _, ok := a.JewelAuctions[itemID]; !ok {
+			j := &JewelAuction{}
+
+			j.ItemID = itemID
+			j.LastSessionID = 1
+			j.Sessions = make(map[int64]*JewelAuction, 0)
+
+			a.JewelAuctions[itemID] = j
+			return nil
+		} else {
+			return errors.New("已经有这个拍卖场")
 		}
-		// 宝石不够数量
-		if k.Kuangs[name].Jewel < count {
-			return false
-		}
-		k.Kuangs[name].FreezeJewel = count
-		k.Kuangs[name].Jewel = k.Kuangs[name].Jewel - count
 	}
+
+	return errors.New("没有这个通货")
 }
 
-// 请求解冻宝石
-func (k *KuangSys) AskUnfreezeJewel(name string, count int64) bool {
-	if _, ok := k.Kuangs[name]; ok {
-		// 已经冻结宝石(正在拍卖)
-		if k.Kuangs[name].FreezeJewel != count {
-			return false
+// CreateAuctionSession 新建一场拍卖会
+func (a *KuangSys) CreateAuctionSession(itemID int64, jewelCount int64, accName string, itemCount int64) error {
+
+	if j, ok := a.JewelAuctions[itemID]; ok {
+
+		lastItemCounts := 0
+
+		if len(accName) < 1 {
+			return errors.New("帐号不存在")
 		}
-		k.Kuangs[name].FreezeJewel = 0
-		k.Kuangs[name].Jewel = k.Kuangs[name].Jewel + count
+
+		if itemCount < 1 {
+			return errors.New("通货数量要>0")
+		}
+
+		if len(j.Sessions) > 0 {
+			if _, ok := j.Sessions[j.LastID]; ok {
+				if !j.Sessions[j.LastID].AuctionOver {
+					return errors.New("拍卖会还在进行中")
+				}
+				lastItemCounts = j.Sessions[j.LastID].LastCounts
+			}
+		}
+
+		if a.Jewel < jewelCount {
+			return errors.New("钻石不够哦")
+		}
+
+		if itemCount < int64(lastItemCounts*0.9) {
+			return errors.New("货币不足最后一次拍卖90%")
+		}
+
+		//
+		as := &AuctionSession{}
+
+		as.ID = j.LastSessionID
+		as.Jewel = jewelCount
+		as.LastCounts = 0
+		as.StartTime = time.Now().Unix()
+		as.EndTime = time.Now().Unix() + 3*60
+		as.AuctionOver = false
+		as.Logs = make([]*AuctionLog, 0)
+
+		al := AuctionLog{AccName: accName, Count: itemCount, Time: time.Now().Unix()}
+
+		j.Sessions[as.ID] = as
+
+		j.LastSessionID++
+		return nil
 	}
+
+	return errors.New("没有这种通货拍卖场")
 }
 
-// 请求兑换冻结的宝石
-func (k *KuangSys) AskExchangeFreezeJewel(name string, count int64, accName string) bool {
-	if _, ok := k.Kuangs[name]; ok {
-		// 已经冻结宝石(正在拍卖)
-		if k.Kuangs[name].FreezeJewel < count {
+func (a *KuangSys) AskAuction(name string, accName string, itemCount int64) bool {
+
+	if j, ok := a.JewelAuctions[name]; ok {
+
+		lastCounts := 0 // 货币数量
+
+		if len(accName) < 1 {
 			return false
 		}
-		k.Kuangs[name].FreezeJewel -= count
-		// 宝石邮件投递给 accName, 对方扣除冻结的游戏币
-		return true
-	}
-	return false
-}
+		// 对accName检查
 
-// 宝石拍卖
-// 需要报宝石拿出来另外保存, 进行拍卖
-// 每次拍卖时间短(原始5分钟拍卖时间), 有新出价就延迟1分钟, 否则结束拍卖
+		if itemCount < 1 {
+			return false
+		}
+
+		// 1. 当前拍卖是否结束
+		if len(j.Sessions) > 0 {
+			if _, ok := j.Sessions[j.LastID]; ok {
+				if !j.Sessions[j.LastID].AuctionOver {
+					return false
+				}
+				lastCounts = j.Sessions[j.LastID].LastCounts
+			}
+		}
+
+		// 2. jewelCount 是否正确, 到矿石系统检查
+		if !GetKuangSys().AskFreezeJewel(j.KuangName, jewelCount) {
+			return false
+		}
+
+		// 3. itemCount 是否合法, 基础竞价
+		if itemCount < int64(lastCounts*0.9) {
+			return false
+		}
+	}
+}
