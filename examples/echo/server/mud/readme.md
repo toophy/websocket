@@ -192,17 +192,68 @@ graph LR
 ```
 
 - 实战引导  *可以省略装备和宠物的选择, 使用默认配置* 
-```mermaid
-graph LR
-选择冒险模式-->选择队友
-选择队友-->开始匹配
-开始匹配-->匹配成功
-匹配成功-->选择英雄
-选择英雄-->选择装备
-选择装备-->选择宠物
-选择宠物-->开始战斗
-开始战斗-->战斗结束
+```flow
+st=>start: 开始
+e=>end: 结束
+
+cond1=>condition: 冒险?
+cond2=>condition: 训练?
+cond3=>condition: 开房间?
+
+op1=>operation: 匹配
+op2=>operation: 进入场景
+op3=>operation: 选择一名英雄
+op4=>operation: 选择队友
+op5=>operation: 选择武器
+op6=>operation: 选择宠物
+
+xop1=>operation: 匹配
+xop2=>operation: 进入场景
+xop3=>operation: 选择一名英雄
+xop4=>operation: 选择队友
+xop5=>operation: 选择武器
+xop6=>operation: 选择宠物
+
+kop1=>operation: 匹配
+kop2=>operation: 进入场景
+kop3=>operation: 选择一名英雄
+kop4=>operation: 选择队友
+kop5=>operation: 选择武器
+kop6=>operation: 选择宠物
+
+
+st->cond1
+cond1(yes)->op4->op3->op1->op5->op6->e
+cond1(no)->cond2
+
+cond2(yes)->xop4->xop3->xop5->xop6->e
+cond2(no)->cond3
+
+cond3(yes)->kop4->kop3->kop5->kop6->e
+
+
 ```
 
-
-
+- **帐号仓库**
+  按照道具分类显示, 可以自定义标签分页, 防止不同的道具, 没有标签的放入
+  临时标签页
+```ditaa {cmd=true args=["-E"]}
+  +-------+
+  | Depot |
+  +-------+-----------------------+
+  | MuJian                        |
+  +-------+-------+-------+-------+
+  |MuJian |MuJian |MuJian |MuJian |
+  |  Wite | Blue  |       |       |
+  +-------+-----------------------+
+  | MuKui                         |
+  +-------+-------+-------+-------+
+  |MuKui  |MuKui  |MuKui  |MuKui  |
+  |   Wite| Blue  |       |       |
+  +-------+-----------------------+
+  | TieJian                       |
+  +-------+-------+-------+-------+
+  |TieJian|TieJian|TieJian|TieJian|
+  |   Wite| Blue  |       |       |
+  +-------+-------+-------+-------+
+  ```
