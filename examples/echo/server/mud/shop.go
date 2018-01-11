@@ -178,31 +178,40 @@ func (s *ShopSys) OnSearchGoods(typeID int32, moneyType int32, moneyMax int32) {
 
 // OnBuyGoods 响应购买商品
 func (s *ShopSys) OnBuyGoods(accID int64, goodsID int32, typeID int32, buyCount int32, moneyType int32) {
+	ret := int32(0)
+	msg := "购买成功"
+
 	if _, ok := s.Shops[accID]; ok {
 		vs := s.Shops[accID]
 		if _, ok := vs.Goodses[typeID]; ok {
+			isFind := false
 			for k, v := range vs.Goodses[typeID] {
 				if v.GoodsID == goodsID {
+					isFind = true
 					if v.MoneyType == moneyType && buyCount <= v.Count {
 						// 成功购买, 发送系统脚本邮件给用户
 						// 同时去掉商铺中的商品?
 						// 什么时候收到玩家的付款呢?
 						// 脚本邮件成功使用后, 玩家付款给商铺?
-						go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 0, "购买成功")
-						return
 					} else {
-						go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 1, "通货不匹配或者购买量不合理")
-						return
+						ret = 1
+						msg = "通货不匹配或者购买量不合理"
 					}
-				} else {
-					go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 2, "指定商品不存在")
-					return
+					break
 				}
 			}
+			if !isFind {
+				ret = 2
+				msg = "指定商品不存在"
+			}
 		} else {
-			go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 3, "商品没有上架")
+			ret = 3
+			msg = "商品没有上架"
 		}
 	} else {
-		go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 4, "商铺不存在")
+		ret = 4
+		msg = "商铺不存在"
 	}
+
+	go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, ret, msg)
 }
