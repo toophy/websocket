@@ -234,6 +234,22 @@ cond3(yes)->kop4->kop3->kop5->kop6->e
 
 ```
 
+- **市场购买流程**
+```sequence
+User->Hall: 请求购买商品
+Hall->Market: 转发请求购买商品
+Market->Shops: 购买商品
+Shops-->Market: 购买失败,反馈原因
+Shops->MailSys: 购买成功,邮寄商品
+Market-->Hall: 转发购买失败,反馈原因
+Hall-->User: 提示购买失败,反馈原因
+MailSys->Hall: 用户在线,执行脚本邮件
+Hall-->User: 提示商品购买成功
+Hall-->MailSys: 收货成功,同意打款给商铺
+MailSys-->Shops: 商铺在线,执行打款
+```
+
+
 - **帐号仓库**
   按照道具分类显示, 可以自定义标签分页, 防止不同的道具, 没有标签的放入
   临时标签页
@@ -256,4 +272,7 @@ cond3(yes)->kop4->kop3->kop5->kop6->e
   |TieJian|TieJian|TieJian|TieJian|
   |   Wite| Blue  |       |       |
   +-------+-------+-------+-------+
-  ```
+
+```
+
+

@@ -6,15 +6,23 @@ import (
 
 // Goods 商品
 type Goods struct {
-	Item        // 道具
-	Price int32 // 单价
-	Money int32 // 货币ItemType
+	Item            // 道具
+	GoodsID   int32 // 商品ID
+	Price     int32 // 单价
+	MoneyType int32 // 货币ItemType
+}
+
+// Goods 商品
+type RetGoods struct {
+	Goods       // 商品
+	AccID int64 //帐号
 }
 
 // Shop 商铺
 type Shop struct {
-	AccID   int64              // 帐号ID
-	Goodses map[int32][]*Goods // 用ItemType索引所有道具
+	AccID       int64              // 帐号ID
+	LastGoodsID int32              // 最后一个商品ID
+	Goodses     map[int32][]*Goods // 用ItemType索引所有道具
 }
 
 // Init 初始化商铺
@@ -29,7 +37,9 @@ func (d *Shop) Insert(i *Goods) bool {
 		if _, ok := d.Goodses[i.Type]; ok {
 			for k, v := range d.Goodses[i.Type] {
 				if v.Count == 0 {
+					d.LastGoodsID++
 					i.Count = 0
+					i.GoodsID = d.LastGoodsID
 					d.Goodses[i.Type] = append(d.Goodses[i.Type], i)
 					break
 				} else {
@@ -38,6 +48,8 @@ func (d *Shop) Insert(i *Goods) bool {
 				}
 			}
 		} else {
+			d.LastGoodsID++
+			i.GoodsID = d.LastGoodsID
 			d.Goodses[i.Type] = make([]*Goods, 0)
 			d.Goodses[i.Type] = append(d.Goodses[i.Type], i)
 		}
@@ -143,4 +155,54 @@ func init() {
 // GetShopSys 获取商铺系统
 func GetShopSys() *ShopSys {
 	return shopSys
+}
+
+// OnSearchGoods 响应市场搜索商品
+func (s *ShopSys) OnSearchGoods(typeID int32, moneyType int32, moneyMax int32) {
+
+	g := make([]*RetGoods, 0)
+
+	for k, vs := range s.Shops {
+		if _, ok := vs.Goodses[typeID]; ok {
+			for k, v := range vs.Goodses[typeID] {
+				if v.MoneyType == moneyType && v.Price <= moneyMax {
+					c := &RetGoods{*v, vs.AccID}
+					g = append(g, c)
+				}
+			}
+		}
+	}
+
+	go GetMarket().OnRetSearchGoods(g)
+}
+
+// OnBuyGoods 响应购买商品
+func (s *ShopSys) OnBuyGoods(accID int64, goodsID int32, typeID int32, buyCount int32, moneyType int32) {
+	if _, ok := s.Shops[accID]; ok {
+		vs := s.Shops[accID]
+		if _, ok := vs.Goodses[typeID]; ok {
+			for k, v := range vs.Goodses[typeID] {
+				if v.GoodsID == goodsID {
+					if v.MoneyType == moneyType && buyCount <= v.Count {
+						// 成功购买, 发送系统脚本邮件给用户
+						// 同时去掉商铺中的商品?
+						// 什么时候收到玩家的付款呢?
+						// 脚本邮件成功使用后, 玩家付款给商铺?
+						go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 0, "购买成功")
+						return
+					} else {
+						go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 1, "通货不匹配或者购买量不合理")
+						return
+					}
+				} else {
+					go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 2, "指定商品不存在")
+					return
+				}
+			}
+		} else {
+			go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 3, "商品没有上架")
+		}
+	} else {
+		go GetMarket().OnRetBuyGoods(accID, goodsID, typeID, buyCount, moneyType, 4, "商铺不存在")
+	}
 }
