@@ -7,9 +7,11 @@ package mud
 //            收到邮件后, 扣除xx通货xx个, 获取钻石xx个
 // 脚本内容 : AutionSuccess(xx钻石数量,xx通货ID,xx通货数量)
 
-// Hall 大厅
+// Mail 邮件
 type Mail struct {
 	ID            int64  // ID
+	RSSMailBoxID  int64  // 订阅的邮箱
+	RSSID         int64  // 订阅的邮件编号
 	Title         string // 标题
 	SenderType    string // 发送人类型: 玩家, 系统, 战队
 	SenderName    string // 发送人名称: SYSTEM,TEAM,Account
@@ -26,6 +28,14 @@ type Mail struct {
 type MailSys struct {
 	Mails  map[int64]*Mail
 	LastID int64
+}
+
+// Mailbox 邮箱
+type Mailbox struct {
+	ID     int64           // 邮箱编号
+	Mails  map[int64]*Mail // 邮件
+	LastID int64           // 最后一封邮件编号
+	RSSBox map[int64]int64 // 订阅邮箱, [订阅的邮箱编号]最后一封邮件编号
 }
 
 var (
