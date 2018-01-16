@@ -35,7 +35,7 @@ func (s *Shop) Init(accID int64) {
 func (d *Shop) Insert(i *Goods) bool {
 	if i != nil {
 		if _, ok := d.Goodses[i.Type]; ok {
-			for k, v := range d.Goodses[i.Type] {
+			for _, v := range d.Goodses[i.Type] {
 				if v.Count == 0 {
 					d.LastGoodsID++
 					i.Count = 0
@@ -61,7 +61,7 @@ func (d *Shop) Insert(i *Goods) bool {
 // Delete 删除道具
 func (d *Shop) DeleteByType(typeID int32, count int32) error {
 	if _, ok := d.Goodses[typeID]; ok {
-		for k, v := range d.Goodses[typeID] {
+		for _, v := range d.Goodses[typeID] {
 			if v.Count == 0 {
 				break
 			} else {
@@ -77,7 +77,7 @@ func (d *Shop) DeleteByType(typeID int32, count int32) error {
 			}
 		}
 		// 一个个顺序删除?
-		realCount := len(d.Goodses[typeID])
+		realCount := int32(len(d.Goodses[typeID]))
 		if realCount > count {
 			d.Goodses[typeID] = d.Goodses[typeID][count:realCount]
 		} else if realCount == count {
@@ -97,7 +97,7 @@ func (d *Shop) DeleteByID(typeID, itemID int32) error {
 	if _, ok := d.Goodses[typeID]; ok {
 		for k, v := range d.Goodses[typeID] {
 			if v.ID == itemID {
-				append(d.Goodses[typeID][0:k], d.Goodses[typeID][k+1:]...)
+				d.Goodses[typeID] = append(d.Goodses[typeID][0:k], d.Goodses[typeID][k+1:]...)
 				return nil
 			}
 		}
@@ -113,7 +113,7 @@ func (d *Shop) GetItemByID(typeID, itemID int32) (*Goods, error) {
 	}
 
 	if _, ok := d.Goodses[typeID]; ok {
-		for k, v := range d.Goodses[typeID] {
+		for _, v := range d.Goodses[typeID] {
 			if v.ID == itemID {
 				return v, nil
 			}
@@ -126,9 +126,9 @@ func (d *Shop) GetItemByID(typeID, itemID int32) (*Goods, error) {
 // GetItemCountByType 通货道具类型获取总量
 func (d *Shop) GetItemCountByType(typeID int32) (ret int32) {
 	if _, ok := d.Goodses[typeID]; ok {
-		for k, v := range d.Goodses[typeID] {
+		for _, v := range d.Goodses[typeID] {
 			if v.Count == 0 {
-				ret = len(d.Goodses[typeID])
+				ret = int32(len(d.Goodses[typeID]))
 				return
 			} else {
 				ret += v.Count
@@ -162,9 +162,9 @@ func (s *ShopSys) OnSearchGoods(typeID int32, moneyType int32, moneyMax int32) {
 
 	g := make([]*RetGoods, 0)
 
-	for k, vs := range s.Shops {
+	for _, vs := range s.Shops {
 		if _, ok := vs.Goodses[typeID]; ok {
-			for k, v := range vs.Goodses[typeID] {
+			for _, v := range vs.Goodses[typeID] {
 				if v.MoneyType == moneyType && v.Price <= moneyMax {
 					c := &RetGoods{*v, vs.AccID}
 					g = append(g, c)
@@ -185,7 +185,7 @@ func (s *ShopSys) OnBuyGoods(accID int64, goodsID int32, typeID int32, buyCount 
 		vs := s.Shops[accID]
 		if _, ok := vs.Goodses[typeID]; ok {
 			isFind := false
-			for k, v := range vs.Goodses[typeID] {
+			for _, v := range vs.Goodses[typeID] {
 				if v.GoodsID == goodsID {
 					isFind = true
 					if v.MoneyType == moneyType && buyCount <= v.Count {

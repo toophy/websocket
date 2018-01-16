@@ -25,7 +25,7 @@ func init() {
 }
 
 // GetShopSys 获取商铺系统
-func GetMarket() *ShopSys {
+func GetMarket() *Market {
 	return market
 }
 
@@ -35,7 +35,7 @@ func (m *Market) SearchGoods(typeID int32, moneyType int32, moneyMax int32) {
 }
 
 // OnRetSearchGoods 反馈搜索商品
-func (m *Market) OnRetSearchGoods(g []*Goods) {
+func (m *Market) OnRetSearchGoods(g []*RetGoods) {
 	fmt.Print("反馈搜索商品: \n")
 	for i := 0; i < len(g); i++ {
 		fmt.Printf("\t%-v\n", g[i])

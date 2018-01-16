@@ -3,7 +3,6 @@ package mud
 import (
 	"errors"
 	"math"
-	"sync"
 	"time"
 )
 
@@ -61,7 +60,7 @@ func init() {
 	kuangSys.Lucky = 0.0
 	kuangSys.LastJewelTime = time.Now().Unix()
 
-	kuangSys.JewelAuctions = make(map[string]*JewelAuction, 0)
+	kuangSys.JewelAuctions = make(map[int64]*JewelAuction, 0)
 
 }
 
@@ -95,7 +94,7 @@ func (k *KuangSys) Update() {
 			break
 
 		case <-t2.C:
-			for i, v := range k.JewelAuctions {
+			for _, v := range k.JewelAuctions {
 				if len(v.Sessions) > 0 {
 					if _, ok := v.Sessions[v.LastSessionID]; ok {
 						if !v.Sessions[v.LastSessionID].AuctionOver {
@@ -127,11 +126,11 @@ func (k *KuangSys) Update() {
 								// 	SendTime      int64  // 发送时间
 								// 	DestoryTime   int64  // 保存截止时间
 								// }
-								newMail := &Mail{
-									ID : 0,
-									Title:"拍卖场竞价成功",
-									SenderType:""
-								}
+								// newMail := &Mail{
+								// 	ID : 0,
+								// 	Title:"拍卖场竞价成功",
+								// 	SenderType:""
+								// }
 							}
 						}
 					}
@@ -152,7 +151,7 @@ func (a *KuangSys) AddAuction(itemID int64) error {
 
 			j.ItemID = itemID
 			j.LastSessionID = 1
-			j.Sessions = make(map[int64]*JewelAuction, 0)
+			j.Sessions = make(map[int64]*AuctionSession, 0)
 
 			a.JewelAuctions[itemID] = j
 			return nil
@@ -169,7 +168,7 @@ func (a *KuangSys) CreateAuctionSession(itemID int64, jewelCount int64, accName 
 
 	if j, ok := a.JewelAuctions[itemID]; ok {
 
-		lastItemCounts := 0
+		lastItemCounts := int64(0)
 
 		if len(accName) < 1 {
 			return errors.New("帐号不存在")
@@ -192,7 +191,7 @@ func (a *KuangSys) CreateAuctionSession(itemID int64, jewelCount int64, accName 
 			return errors.New("钻石不够哦")
 		}
 
-		if itemCount < int64(lastItemCounts*0.9) {
+		if itemCount < int64(math.Floor(float64(lastItemCounts)*0.9)) {
 			return errors.New("货币不足最后一次拍卖90%")
 		}
 
@@ -207,7 +206,8 @@ func (a *KuangSys) CreateAuctionSession(itemID int64, jewelCount int64, accName 
 		as.AuctionOver = false
 		as.Logs = make([]*AuctionLog, 0)
 
-		al := AuctionLog{AccName: accName, ItemCount: itemCount, Time: time.Now().Unix()}
+		al := &AuctionLog{AccName: accName, ItemCount: itemCount, Time: time.Now().Unix()}
+		as.Logs = append(as.Logs, al)
 
 		j.Sessions[as.ID] = as
 
@@ -223,7 +223,7 @@ func (a *KuangSys) AskAuction(itemID int64, accName string, itemCount int64) err
 
 	if j, ok := a.JewelAuctions[itemID]; ok {
 
-		lastItemCounts := 0 // 货币数量
+		lastItemCounts := int64(0) // 货币数量
 
 		if len(accName) < 1 {
 			return errors.New("帐号不存在")
@@ -249,7 +249,7 @@ func (a *KuangSys) AskAuction(itemID int64, accName string, itemCount int64) err
 		}
 
 		// 每次至少增加 1%
-		if itemCount < int64(lastItemCounts*1.1) {
+		if itemCount < int64(math.Floor(float64(lastItemCounts)*1.1)) {
 			return errors.New("至少增加1%进行竞价")
 		}
 

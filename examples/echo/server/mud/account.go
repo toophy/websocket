@@ -2,7 +2,7 @@ package mud
 
 // AccountInfo 帐号
 type AccountInfo struct {
-	ID         int64   // 帐号ID
+	ID         int64   // 帐号ID, 邮箱地址
 	Name       string  // 帐号名
 	Nick       string  // 昵称
 	Step       int32   // 段位
@@ -17,9 +17,12 @@ type AccountInfo struct {
 
 // AccountReal
 type AccountReal struct {
-	AccountInfo
-	Online   bool  // 在线么
-	LastTime int32 // 最近登录时间
+	AccountInfo           // 帐号基本信息
+	LoadOver        bool  // 所有信息加载完毕
+	Online          bool  // 在线么
+	LastTime        int32 // 最近登录时间
+	LastMailID      int32 // 最近一封邮件ID
+	LastGetMailTime int64 // 最近一次索取邮件时间
 }
 
 // BattleInfo 战斗记录
