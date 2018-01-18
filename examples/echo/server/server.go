@@ -96,6 +96,10 @@ func main() {
 
 	//	go ks.Update()
 
+	mud.GetDBS().AccountRegist("wind1", "蓝枫1号")
+	mud.GetDBS().AccountRegist("wind2", "蓝枫2号")
+
+	go mud.GetHall().Update()
 	go mud.GetMailSys().Update()
 
 	flag.Parse()

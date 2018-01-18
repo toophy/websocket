@@ -6,7 +6,8 @@ import (
 
 // Hall 大厅
 type Hall struct {
-	Accounts map[string]*AccountReal // 本大厅登录帐号
+	Accounts   map[string]*AccountReal // 本大厅登录帐号
+	AccountIDs map[int64]*AccountReal  // 本大厅登录帐号ID
 }
 
 var (
@@ -16,6 +17,7 @@ var (
 func init() {
 	hall = &Hall{}
 	hall.Accounts = make(map[string]*AccountReal, 0)
+	hall.AccountIDs = make(map[int64]*AccountReal, 0)
 }
 
 func GetHall() *Hall {
@@ -24,12 +26,21 @@ func GetHall() *Hall {
 
 // Update
 func (h *Hall) Update() {
-	for k, v := range h.Accounts {
-		if v.LoadOver {
-			if time.Now().UnixNano() > v.LastGetMailTime+10000000*time.Nanosecond {
-				v.LastGetMailTime = time.Now().UnixNano()
-				go GetMailSys().GetNextMails(v.AccountInfo.ID, v.LastMailID)
+	t := time.NewTimer(5 * time.Second)
+	for {
+		select {
+		case <-t.C:
+			for k, v := range h.Accounts {
+				if !v.LoadOver {
+					continue
+				}
+				if time.Now().UnixNano() > v.LastGetMailTime+10000000*time.Nanosecond {
+					v.LastGetMailTime = time.Now().UnixNano()
+					go GetMailSys().GetNextMails(v.AccountInfo.ID, v.LastMailID)
+				}
 			}
+			t.Reset(1 * time.Second)
+			break
 		}
 	}
 }
@@ -57,13 +68,15 @@ func (h *Hall) ToGetAccount(name string) {
 			LastTime:        int32(time.Now().Unix()),
 			LastMailID:      0,
 			LastGetMailTime: time.Now().UnixNano()}
+
+		h.AccountIDs[a.ID] = h.Accounts[name]
 		println("AccountLogin Ok")
 	} else {
 		println("AccountLogin Failed")
 	}
 }
 
-//
+// AskMatch 请求匹配一种游戏方式
 func (h *Hall) AskMatch(name string, game string) {
 	if _, ok := h.Accounts[name]; ok {
 		go GetMatchSys().AskMatch(name, game, h.Accounts[name].Step, h.Accounts[name].Elo, float64(h.Accounts[name].WinRate), float64(h.Accounts[name].Kda))
@@ -77,16 +90,35 @@ func (h *Hall) OnMatchOver(accounts []string) {
 			println("帐号", accounts[i], " 离线")
 			break
 		}
+		println("匹配成功", accounts)
 	}
 
 	// 生成房间(Room), 开搞喽
 }
 
 // 房间战斗结束, 返回战斗结果, 每个玩家的信息分开
-func (h *Hall) OnRoomOver(battles []BattleInfo) {
+func (h *Hall) OnRoomOver(battles BattleInfo) {
+	if _, ok := h.AccountIDs[battles.AccID]; ok {
+		println("战报:", h.AccountIDs[battles.AccID].Name)
+	} else {
+		println("帐号不存在:", battles.AccID)
+	}
 }
 
 // 处理返回邮件
 func (h *Hall) OnRecvMails(accID int64, mails []Mail) {
-
+	if _, ok := h.AccountIDs[accID]; ok {
+		lastMailID := int32(0)
+		for k, _ := range mails {
+			if mails[k].ID > lastMailID {
+				lastMailID = mails[k].ID
+			}
+			// 1. 系统的脚本邮件, a. 给客户端解释执行 b. 立即解释执行
+			// 2. 普通邮件, a. 给客户端解释执行
+			println("接收到邮件:", mails[k].Title)
+		}
+		if lastMailID > h.AccountIDs[accID].LastMailID {
+			h.AccountIDs[accID].LastMailID = lastMailID
+		}
+	}
 }

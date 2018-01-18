@@ -263,26 +263,169 @@ MailSys-->Shops: 商铺在线,执行打款
 - **帐号仓库**
   按照道具分类显示, 可以自定义标签分页, 防止不同的道具, 没有标签的放入
   临时标签页
-```ditaa {cmd=true args=["-E"]}
-  +-------+
-  | Depot |
-  +-------+-----------------------+
-  | MuJian                        |
-  +-------+-------+-------+-------+
-  |MuJian |MuJian |MuJian |MuJian |
-  |  Wite | Blue  |       |       |
-  +-------+-----------------------+
-  | MuKui                         |
-  +-------+-------+-------+-------+
-  |MuKui  |MuKui  |MuKui  |MuKui  |
-  |   Wite| Blue  |       |       |
-  +-------+-----------------------+
-  | TieJian                       |
-  +-------+-------+-------+-------+
-  |TieJian|TieJian|TieJian|TieJian|
-  |   Wite| Blue  |       |       |
-  +-------+-------+-------+-------+
+
+- **整服构架**
+```mermaid
+graph TD
+
+Acc1-->Conn1
+Acc2-->Conn2
+
+subgraph one
+Hall-->ConnY((大厅网络))
+Market-->ConnY
+Store-->ConnY
+Room-->ConnY
+Match-->ConnY
+Mails-->ConnY
+钻石矿-->ConnY
+数据库-->ConnY
+end
+
+subgraph two
+Hall-->BigC((大服中心))
+Market-->BigC
+Store-->BigC
+Room-->BigC
+Match-->BigC
+Mails-->BigC
+钻石矿-->BigC
+数据库-->BigC
+end
 
 ```
+```plantuml
+@startsalt
+{+
+{* File | Edit | Source | Refactor 
+ Refactor | New | Open File | - | Close | Close All }
+{/ General | Fullscreen | Behavior | Saving }
+{
+	{ Open image in: | ^Smart Mode^ }
+	[X] Smooth images when zoomed
+	[X] Confirm image deletion
+	[ ] Show hidden images 
+}
+[Close]
+}
+@endsalt
+```
+```plantuml
+@startuml
+sprite $bProcess jar:archimate/business-process
+sprite $aService jar:archimate/application-service
+sprite $aComponent jar:archimate/application-component
+
+rectangle "Handle claim"  as HC <<$bProcess>> #yellow 
+rectangle "Capture Information"  as CI <<$bProcess>> #yellow
+rectangle "Notify\nAdditional Stakeholders" as NAS <<$bProcess>> #yellow
+rectangle "Validate" as V <<$bProcess>> #yellow
+rectangle "Investigate" as I <<$bProcess>> #yellow
+rectangle "Pay" as P <<$bProcess>> #yellow
+
+HC *-down- CI
+HC *-down- NAS
+HC *-down- V
+HC *-down- I
+HC *-down- P
 
 
+CI -right->> NAS
+NAS -right->> V
+V -right->> I
+I -right->> P
+
+
+
+rectangle "Scanning" as scanning <<$aService>> #A9DCDF
+rectangle "Customer admnistration" as customerAdministration <<$aService>> #A9DCDF
+rectangle "Claims admnistration" as claimsAdministration <<$aService>> #A9DCDF
+rectangle Printing  <<$aService>> #A9DCDF
+rectangle Payment  <<$aService>> #A9DCDF
+
+scanning -up-> CI
+customerAdministration  -up-> CI
+claimsAdministration -up-> NAS
+claimsAdministration -up-> V
+claimsAdministration -up-> I
+Printing -up-> V
+Printing -up-> P
+Payment -up-> P
+
+rectangle "Document\nManagement\nSystem" as DMS <<$aComponent>> #A9DCDF
+rectangle "General\nCRM\nSystem" as CRM <<$aComponent>> #A9DCDF
+rectangle "Home & Away\nPolicy\nAdministration" as HAPA <<$aComponent>> #A9DCDF
+rectangle "Home & Away\nFinancial\nAdministration" as HFPA <<$aComponent>> #A9DCDF
+
+DMS .up.|> scanning
+DMS .up.|> Printing
+CRM .up.|> customerAdministration
+HAPA .up.|> claimsAdministration
+HFPA .up.|> Payment
+
+legend left
+Example from the "Archisurance case study" (OpenGroup).
+See 
+==
+<$bProcess> :business process
+==
+<$aService> : application service
+==
+<$aComponent> : appplication component
+endlegend
+@enduml
+```
+
+```plantuml
+@startuml
+
+package "中心服" {
+  中心连接 - [中心核心]
+}
+
+package "大厅服" {
+  连接1 - [帐号1]
+  大厅连接 - [大厅核心]
+  [大厅核心] --> 中心服
+}
+
+package "用户" {
+    [用户核心] -> 连接1
+}
+
+cloud "邮件服" {
+  [邮件核心] --> 大厅服
+  [邮件核心] --> 中心服
+}
+
+cloud "房间服" {
+  [房间核心] --> 大厅服
+  [房间核心] --> 中心服
+}
+
+cloud "匹配服" {
+  [匹配核心] --> 大厅服
+  [匹配核心] --> 中心服
+}
+
+cloud "矿场服" {
+  [矿场核心] --> 大厅服
+  [矿场核心] --> 中心服
+  [矿场]
+  [拍卖场]
+}
+
+cloud "市场服" {
+  [市场核心] --> 大厅服
+  [市场核心] --> 中心服
+}
+
+database "共享服" {
+  [共享核心] --> 大厅服
+  [共享核心] --> 中心服
+}
+
+
+
+@enduml
+```
