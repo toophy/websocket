@@ -26,23 +26,7 @@ func GetHall() *Hall {
 
 // Update
 func (h *Hall) Update() {
-	t := time.NewTimer(5 * time.Second)
-	for {
-		select {
-		case <-t.C:
-			for k, v := range h.Accounts {
-				if !v.LoadOver {
-					continue
-				}
-				if time.Now().UnixNano() > v.LastGetMailTime+10000000*time.Nanosecond {
-					v.LastGetMailTime = time.Now().UnixNano()
-					go GetMailSys().GetNextMails(v.AccountInfo.ID, v.LastMailID)
-				}
-			}
-			t.Reset(1 * time.Second)
-			break
-		}
-	}
+
 }
 
 // AccountLogin 登录

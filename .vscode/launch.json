@@ -55,6 +55,32 @@
             "env": {},
             "args": ["2323"],
             "showLog": true
+        },
+        {
+            "name": "CompServerNew",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "remotePath": "",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "program": "C:/TestGo/src/github.com/gorilla/websocket/examples/mud_game/server",
+            "env": {},
+            "args": ["2323"],
+            "showLog": true
+        },
+        {
+            "name": "CompClientNew",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "remotePath": "",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "program": "C:/TestGo/src/github.com/gorilla/websocket/examples/mud_game/client",
+            "env": {},
+            "args": ["2323"],
+            "showLog": true
         }
     ]
 }

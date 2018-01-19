@@ -1,13 +1,17 @@
 package mud
 
 import (
+	"encoding/json"
+	"fmt"
+	"sync"
 	"time"
 )
 
 // Hall 大厅
 type Hall struct {
-	Accounts   map[string]*AccountReal // 本大厅登录帐号
-	AccountIDs map[int64]*AccountReal  // 本大厅登录帐号ID
+	Accounts      map[string]*AccountReal // 本大厅登录帐号
+	AccountIDs    map[int64]*AccountReal  // 本大厅登录帐号ID
+	AccountLocker *sync.Mutex             // 帐号列表锁
 }
 
 var (
@@ -18,6 +22,7 @@ func init() {
 	hall = &Hall{}
 	hall.Accounts = make(map[string]*AccountReal, 0)
 	hall.AccountIDs = make(map[int64]*AccountReal, 0)
+	hall.AccountLocker = new(sync.Mutex)
 }
 
 func GetHall() *Hall {
@@ -30,15 +35,17 @@ func (h *Hall) Update() {
 	for {
 		select {
 		case <-t.C:
-			for k, v := range h.Accounts {
+			h.AccountLocker.Lock()
+			for _, v := range h.Accounts {
 				if !v.LoadOver {
 					continue
 				}
-				if time.Now().UnixNano() > v.LastGetMailTime+10000000*time.Nanosecond {
-					v.LastGetMailTime = time.Now().UnixNano()
+				if time.Now().Unix() > v.LastGetMailTime+10 {
+					v.LastGetMailTime = time.Now().Unix()
 					go GetMailSys().GetNextMails(v.AccountInfo.ID, v.LastMailID)
 				}
 			}
+			h.AccountLocker.Unlock()
 			t.Reset(1 * time.Second)
 			break
 		}
@@ -46,20 +53,40 @@ func (h *Hall) Update() {
 }
 
 // AccountLogin 登录
-func (h *Hall) AccountLogin(name string) {
+func (h *Hall) AccountLogin(a *AccountConn, mt int, data *EchoProto) {
+	name := data.Data["account"].(string)
+	pwd := data.Data["pwd"].(string)
+
+	fmt.Printf("[I] 帐号申请登录(%s : %s)\n", name, pwd)
+
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
 	if _, ok := h.Accounts[name]; !ok {
-		go h.ToGetAccount(name)
+		go h.ToGetAccount(a, mt, data)
 	} else {
-		h.Accounts[name].LoadOver = true
-		h.Accounts[name].Online = true
-		h.Accounts[name].LastTime = int32(time.Now().Unix())
-		h.Accounts[name].LastMailID = 0
-		h.Accounts[name].LastGetMailTime = time.Now().UnixNano()
+		retData := RetEchoProto{
+			C:    data.C,
+			M:    data.M,
+			Data: data.Data,
+			Ret:  "fail",
+			Msg:  "重复登录"}
+		ret, _ := json.Marshal(retData)
+		err := a.C.WriteMessage(mt, ret)
+		if err != nil {
+			fmt.Printf("[W] 向网络写消息失败:%s\n", err)
+		}
 	}
 }
 
 // ToGetAccount 验证帐号注册信息
-func (h *Hall) ToGetAccount(name string) {
+func (h *Hall) ToGetAccount(ac *AccountConn, mt int, data *EchoProto) {
+	name := data.Data["account"].(string)
+	pwd := data.Data["pwd"].(string)
+
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
 	if a, ok := GetDBS().GetAccount(name); ok {
 		h.Accounts[name] = &AccountReal{
 			AccountInfo:     a,
@@ -70,14 +97,45 @@ func (h *Hall) ToGetAccount(name string) {
 			LastGetMailTime: time.Now().UnixNano()}
 
 		h.AccountIDs[a.ID] = h.Accounts[name]
-		println("AccountLogin Ok")
+
+		fmt.Printf("[I] 帐号成功登录(%s : %s)\n", name, pwd)
+
+		retData := RetEchoProto{
+			C:    data.C,
+			M:    data.M,
+			Data: data.Data,
+			Ret:  "ok",
+			Msg:  ""}
+		ret, _ := json.Marshal(retData)
+		err := ac.C.WriteMessage(mt, ret)
+		if err != nil {
+			fmt.Printf("[W] 向网络写消息失败:%s\n", err)
+		}
 	} else {
-		println("AccountLogin Failed")
+		fmt.Printf("[I] 帐号未注册:%s\n", name)
+
+		retData := RetEchoProto{
+			C:    data.C,
+			M:    data.M,
+			Data: data.Data,
+			Ret:  "fail",
+			Msg:  "帐号未注册"}
+		ret, _ := json.Marshal(retData)
+		err := ac.C.WriteMessage(mt, ret)
+		if err != nil {
+			fmt.Printf("[W] 向网络写消息失败:%s\n", err)
+		}
 	}
 }
 
 // AskMatch 请求匹配一种游戏方式
-func (h *Hall) AskMatch(name string, game string) {
+func (h *Hall) AskMatch(ac *AccountConn, mt int, data *EchoProto) {
+	name := data.Data["account"].(string)
+	game := data.Data["game"].(string)
+
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
 	if _, ok := h.Accounts[name]; ok {
 		go GetMatchSys().AskMatch(name, game, h.Accounts[name].Step, h.Accounts[name].Elo, float64(h.Accounts[name].WinRate), float64(h.Accounts[name].Kda))
 	}
@@ -85,6 +143,9 @@ func (h *Hall) AskMatch(name string, game string) {
 
 // 匹配服,成功匹配
 func (h *Hall) OnMatchOver(accounts []string) {
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
 	for i := 0; i < len(accounts); i++ {
 		if _, ok := h.Accounts[accounts[i]]; !ok {
 			println("帐号", accounts[i], " 离线")
@@ -96,8 +157,16 @@ func (h *Hall) OnMatchOver(accounts []string) {
 	// 生成房间(Room), 开搞喽
 }
 
+// SendMail 发送邮件
+func (h *Hall) SendMail(ac *AccountConn, mt int, data *EchoProto) {
+
+}
+
 // 房间战斗结束, 返回战斗结果, 每个玩家的信息分开
 func (h *Hall) OnRoomOver(battles BattleInfo) {
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
 	if _, ok := h.AccountIDs[battles.AccID]; ok {
 		println("战报:", h.AccountIDs[battles.AccID].Name)
 	} else {
@@ -107,6 +176,9 @@ func (h *Hall) OnRoomOver(battles BattleInfo) {
 
 // 处理返回邮件
 func (h *Hall) OnRecvMails(accID int64, mails []Mail) {
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
 	if _, ok := h.AccountIDs[accID]; ok {
 		lastMailID := int32(0)
 		for k, _ := range mails {

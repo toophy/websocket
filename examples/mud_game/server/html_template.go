@@ -1,5 +1,9 @@
 package main
 
+import (
+	"html/template"
+)
+
 var homeTemplate = template.Must(template.New("").Parse(`
     <!DOCTYPE html>
     <head>

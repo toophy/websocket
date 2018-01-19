@@ -1,5 +1,9 @@
 package mud
 
+import (
+	"github.com/gorilla/websocket"
+)
+
 // AccountInfo 帐号
 type AccountInfo struct {
 	ID         int64   // 帐号ID, 邮箱地址
@@ -45,5 +49,6 @@ type AccountConn struct {
 	Account string
 	Pwd     string
 	Mt      int
+	Temp    bool // 临时网络连接
 	C       *websocket.Conn
 }
