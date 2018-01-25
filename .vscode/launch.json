@@ -81,6 +81,19 @@
             "env": {},
             "args": ["2323"],
             "showLog": true
+        },
+        {
+            "name": "CompBeegoClient",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "remotePath": "",
+            "port": 2346,
+            "host": "127.0.0.1",
+            "program": "C:/TestGo/src/github.com/gorilla/websocket/examples/mud_game/bee_client",
+            "env": {},
+            "args": ["2323"],
+            "showLog": true
         }
     ]
 }
