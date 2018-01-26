@@ -12,6 +12,7 @@ type AccountConn struct {
 	Mt      int
 	Temp    bool // 临时网络连接
 	C       *websocket.Conn
+	C1      chan string
 }
 
 var(
@@ -37,7 +38,8 @@ func NewAccount(account string) *AccountConn{
 		Pwd :"",
 		Mt : 0,
 		Temp:true,
-		C:nil}
+		C:nil,
+		C1:make(chan string)}
 
 	return gAccounts[account]
 }
@@ -47,7 +49,14 @@ func GetAccount(account string) *AccountConn{
 	defer gAccountLock.Unlock()
 
 	if _,ok:=gAccounts[account];ok{
-		return gAccounts[account];
+		return gAccounts[account]
 	}
 	return nil
+}
+
+func LeaveAccount(account string) {
+	gAccountLock.Lock()
+	defer gAccountLock.Unlock()
+
+	delete(gAccounts,account)
 }

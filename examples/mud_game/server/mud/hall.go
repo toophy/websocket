@@ -52,10 +52,52 @@ func (h *Hall) Update() {
 	}
 }
 
+// AccountLeave 登录
+func (h *Hall) AccountLeave(a *AccountConn, mt int, data *EchoProto) {
+	name := data.Data["account"].(string)
+
+	fmt.Printf("[I] 帐号申请离线(%s)\n", name)
+
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
+	if _, ok := h.Accounts[name]; ok {
+		if a.C!=nil {
+			retData := *data
+			retData.Data["ret"] = "ok"
+			retData.Data["msg"] =  "正常离线"
+			ret, _ := json.Marshal(retData)
+			err := a.C.WriteMessage(mt, ret)
+			if err != nil {
+				fmt.Printf("[W] 向网络写消息失败:%s\n", err)
+			}
+			t:=time.Now()
+			t.After(2)
+			a.C.SetWriteDeadline(t)
+		}
+		
+		delete(hall.AccountIDs,h.Accounts[name].ID)
+		delete(hall.Accounts,name)
+	} else {
+		if a.C!=nil {
+			retData := *data
+			retData.Data["ret"] = "failed"
+			retData.Data["msg"] =  "重复离线"
+			ret, _ := json.Marshal(retData)
+			err := a.C.WriteMessage(mt, ret)
+			if err != nil {
+				fmt.Printf("[W] 向网络写消息失败:%s\n", err)
+			}
+		}
+	}
+}
+
 // AccountLogin 登录
 func (h *Hall) AccountLogin(a *AccountConn, mt int, data *EchoProto) {
 	name := data.Data["account"].(string)
 	pwd := data.Data["pwd"].(string)
+
+	a.Account = name
 
 	fmt.Printf("[I] 帐号申请登录(%s : %s)\n", name, pwd)
 
@@ -65,12 +107,9 @@ func (h *Hall) AccountLogin(a *AccountConn, mt int, data *EchoProto) {
 	if _, ok := h.Accounts[name]; !ok {
 		go h.ToGetAccount(a, mt, data)
 	} else {
-		retData := RetEchoProto{
-			C:    data.C,
-			M:    data.M,
-			Data: data.Data,
-			Ret:  "fail",
-			Msg:  "重复登录"}
+		retData := *data
+		retData.Data["ret"] = "fail"
+		retData.Data["msg"] =  "重复登录"
 		ret, _ := json.Marshal(retData)
 		err := a.C.WriteMessage(mt, ret)
 		if err != nil {
@@ -100,12 +139,10 @@ func (h *Hall) ToGetAccount(ac *AccountConn, mt int, data *EchoProto) {
 
 		fmt.Printf("[I] 帐号成功登录(%s : %s)\n", name, pwd)
 
-		retData := RetEchoProto{
-			C:    data.C,
-			M:    data.M,
-			Data: data.Data,
-			Ret:  "ok",
-			Msg:  ""}
+		retData := *data
+		retData.Data["ret"] = "ok"
+		retData.Data["msg"] =  ""
+
 		ret, _ := json.Marshal(retData)
 		err := ac.C.WriteMessage(mt, ret)
 		if err != nil {
@@ -114,12 +151,9 @@ func (h *Hall) ToGetAccount(ac *AccountConn, mt int, data *EchoProto) {
 	} else {
 		fmt.Printf("[I] 帐号未注册:%s\n", name)
 
-		retData := RetEchoProto{
-			C:    data.C,
-			M:    data.M,
-			Data: data.Data,
-			Ret:  "fail",
-			Msg:  "帐号未注册"}
+		retData := *data
+		retData.Data["ret"] = "fail"
+		retData.Data["msg"] =  "帐号未注册"
 		ret, _ := json.Marshal(retData)
 		err := ac.C.WriteMessage(mt, ret)
 		if err != nil {

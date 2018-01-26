@@ -17,14 +17,6 @@ type EchoProto struct {
 	Data map[string]interface{} `json:"data"`
 }
 
-type RetEchoProto struct {
-	C    string                 `json:"c"`
-	M    string                 `json:"m"`
-	Data map[string]interface{} `json:"data"`
-	Ret  string                 `json:"ret"`
-	Msg  string                 `json:"msg"`
-}
-
 type TMsgFunc func(a *AccountConn, mt int, data *EchoProto) bool
 
 type MessageFunc struct {

@@ -1,5 +1,10 @@
 package mud
 
+func OnCMsg_AccountLeave(a *AccountConn, mt int, data *EchoProto) bool {
+	GetHall().AccountLeave(a,mt,data)
+	return true
+}
+
 func OnCMsg_AccountLogin(a *AccountConn, mt int, data *EchoProto) bool {
 	GetHall().AccountLogin(a, mt, data)
 	return true
