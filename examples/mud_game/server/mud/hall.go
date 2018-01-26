@@ -67,13 +67,19 @@ func (h *Hall) AccountLeave(a *AccountConn, mt int, data *EchoProto) {
 			retData.Data["ret"] = "ok"
 			retData.Data["msg"] =  "正常离线"
 			ret, _ := json.Marshal(retData)
+			
 			err := a.C.WriteMessage(mt, ret)
 			if err != nil {
 				fmt.Printf("[W] 向网络写消息失败:%s\n", err)
 			}
-			t:=time.Now()
-			t.After(2)
-			a.C.SetWriteDeadline(t)
+			
+			go func() {
+				select{
+				case <-time.After(1*time.Second):
+					a.C.Close()
+					break
+				}
+			}()			
 		}
 		
 		delete(hall.AccountIDs,h.Accounts[name].ID)
@@ -84,10 +90,18 @@ func (h *Hall) AccountLeave(a *AccountConn, mt int, data *EchoProto) {
 			retData.Data["ret"] = "failed"
 			retData.Data["msg"] =  "重复离线"
 			ret, _ := json.Marshal(retData)
+			
 			err := a.C.WriteMessage(mt, ret)
 			if err != nil {
 				fmt.Printf("[W] 向网络写消息失败:%s\n", err)
 			}
+			go func() {
+				select{
+				case <-time.After(1*time.Second):
+					a.C.Close()
+					break
+				}
+			}()			
 		}
 	}
 }
