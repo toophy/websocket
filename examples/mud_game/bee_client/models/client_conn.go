@@ -3,9 +3,9 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"log"
 	"github.com/gorilla/websocket"
+	"log"
+	"net/url"
 )
 
 // EchoProto echo协议
@@ -30,16 +30,16 @@ func init() {
 	GMsgFuncs = make(map[string]*MessageFunc, 0)
 }
 
-func AccountLeave(account string){
-	newAcc :=GetAccount(account)
-	if newAcc!=nil {
-		if newAcc.C!=nil {
-			go func(){
+func AccountLeave(account string) {
+	newAcc := GetAccount(account)
+	if newAcc != nil {
+		if newAcc.C != nil {
+			go func() {
 				retData := EchoProto{
 					"Index",
 					"Leave",
-					map[string]interface{}{} }
-			
+					map[string]interface{}{}}
+
 				retData.Data["account"] = account
 
 				ret, _ := json.Marshal(retData)
@@ -49,33 +49,33 @@ func AccountLeave(account string){
 					log.Println("write:", err)
 					return
 				}
-			}()			
+			}()
 		} else {
 			LeaveAccount(account)
 		}
 	}
 }
 
-func AccountLogin(account string,pwd string) {
+func AccountLogin(account string, pwd string) {
 	retData := EchoProto{
 		"Index",
 		"Login",
-		map[string]interface{}{} }
+		map[string]interface{}{}}
 
 	retData.Data["account"] = account
 	retData.Data["pwd"] = pwd
 
-	newAcc :=GetAccount(account)
-	if newAcc!=nil {
-		if newAcc.C!=nil {
-			go func(){
+	newAcc := GetAccount(account)
+	if newAcc != nil {
+		if newAcc.C != nil {
+			go func() {
 				newAcc.C1 <- fmt.Sprintf("[I] 帐号%s已经在登录中", account)
-			}()			
+			}()
 		}
 		return
 	} else {
 		newAcc = NewAccount(account)
-		if newAcc==nil{
+		if newAcc == nil {
 			return
 		}
 	}
@@ -84,9 +84,9 @@ func AccountLogin(account string,pwd string) {
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		go func(){
-			newAcc.C1 <- fmt.Sprintf("[I] 帐号%s连接错误: %s",account, err.Error())
-		}()			
+		go func() {
+			newAcc.C1 <- fmt.Sprintf("[I] 帐号%s连接错误: %s", account, err.Error())
+		}()
 		return
 	}
 
@@ -97,7 +97,7 @@ func AccountLogin(account string,pwd string) {
 		for {
 			mt, message, err := c.ReadMessage()
 			if err != nil {
-				newAcc.C1 <- fmt.Sprintf("[I] 帐号%s网络连接读取错误: %s",account, err.Error())
+				newAcc.C1 <- fmt.Sprintf("[I] 帐号%s网络连接读取错误: %s", account, err.Error())
 				return
 			}
 			log.Printf("recv: %s", message)
@@ -116,5 +116,52 @@ func AccountLogin(account string,pwd string) {
 	if err != nil {
 		log.Println("write:", err)
 		return
+	}
+}
+
+func SendMail(account, recer, title, content string) {
+
+	newAcc := GetAccount(account)
+	if newAcc == nil || newAcc.C == nil {
+		go func() {
+			newAcc.C1 <- fmt.Sprintf("[I] 帐号%s不在登录中", account)
+		}()
+		return
+	}
+
+	if ret, ok := json.Marshal(&EchoProto{
+		C: "Index",
+		M: "SendMail",
+		Data: map[string]interface{}{
+			"recer":   recer,
+			"title":   title,
+			"content": content}}); ok == nil {
+		if err := newAcc.C.WriteMessage(websocket.TextMessage, ret); err != nil {
+			go func(retErr string) {
+				newAcc.C1 <- fmt.Sprintf("[I] 帐号%s发送邮件失败:%s", account, retErr)
+			}(err.Error())
+		}
+	}
+}
+
+func GetMails(account string) {
+
+	newAcc := GetAccount(account)
+	if newAcc == nil || newAcc.C == nil {
+		go func() {
+			newAcc.C1 <- fmt.Sprintf("[I] 帐号%s不在登录中", account)
+		}()
+		return
+	}
+
+	if ret, ok := json.Marshal(&EchoProto{
+		C:    "Index",
+		M:    "GetMails",
+		Data: map[string]interface{}{}}); ok == nil {
+		if err := newAcc.C.WriteMessage(websocket.TextMessage, ret); err != nil {
+			go func(retErr string) {
+				newAcc.C1 <- fmt.Sprintf("[I] 帐号%s收取邮件失败:%s", account, retErr)
+			}(err.Error())
+		}
 	}
 }

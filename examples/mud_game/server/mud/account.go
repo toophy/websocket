@@ -21,12 +21,13 @@ type AccountInfo struct {
 
 // AccountReal
 type AccountReal struct {
-	AccountInfo           // 帐号基本信息
-	LoadOver        bool  // 所有信息加载完毕
-	Online          bool  // 在线么
-	LastTime        int32 // 最近登录时间
-	LastMailID      int32 // 最近一封邮件ID
-	LastGetMailTime int64 // 最近一次索取邮件时间
+	AccountInfo                  // 帐号基本信息
+	LoadOver        bool         // 所有信息加载完毕
+	Online          bool         // 在线么
+	LastTime        int32        // 最近登录时间
+	LastMailID      int32        // 最近一封邮件ID
+	LastGetMailTime int64        // 最近一次索取邮件时间
+	Conn            *AccountConn // 网络连接
 }
 
 // BattleInfo 战斗记录

@@ -1,16 +1,17 @@
 package net_msg
 
-import(
-	"fmt"
+import (
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/websocket/examples/mud_game/bee_client/models"
 )
 
-func init(){
-	 models.GMsgFuncs["Index.Login"] = &models.MessageFunc{CM: "Index.Login", Proc: OnCMsg_AccountLogin}
-	 models.GMsgFuncs["Index.AskMatch"] = &models.MessageFunc{CM: "Index.AskMatch", Proc: OnCMsg_AskMatch}
-	 models.GMsgFuncs["Index.SendMail"] = &models.MessageFunc{CM: "Index.SendMail", Proc: OnCMsg_SendMail}
-	 models.GMsgFuncs["Index.Leave"] = &models.MessageFunc{CM: "Index.Leave", Proc: OnCMsg_AccountLeave}
+func init() {
+	models.GMsgFuncs["Index.Login"] = &models.MessageFunc{CM: "Index.Login", Proc: OnCMsg_AccountLogin}
+	models.GMsgFuncs["Index.AskMatch"] = &models.MessageFunc{CM: "Index.AskMatch", Proc: OnCMsg_AskMatch}
+	models.GMsgFuncs["Index.SendMail"] = &models.MessageFunc{CM: "Index.SendMail", Proc: OnCMsg_SendMail}
+	models.GMsgFuncs["Index.GetMails"] = &models.MessageFunc{CM: "Index.GetMails", Proc: OnCMsg_GetMails}
+	models.GMsgFuncs["Index.Leave"] = &models.MessageFunc{CM: "Index.Leave", Proc: OnCMsg_AccountLeave}
 }
 
 func OnCMsg_AccountLeave(a *models.AccountConn, mt int, data *models.EchoProto) bool {
@@ -21,7 +22,7 @@ func OnCMsg_AccountLeave(a *models.AccountConn, mt int, data *models.EchoProto) 
 }
 
 func OnCMsg_AccountLogin(a *models.AccountConn, mt int, data *models.EchoProto) bool {
-	rets,_:=json.Marshal(data)
+	rets, _ := json.Marshal(data)
 	a.C1 <- string(rets)
 	return true
 }
@@ -31,5 +32,13 @@ func OnCMsg_AskMatch(a *models.AccountConn, mt int, data *models.EchoProto) bool
 }
 
 func OnCMsg_SendMail(a *models.AccountConn, mt int, data *models.EchoProto) bool {
+	rets, _ := json.Marshal(data)
+	a.C1 <- string(rets)
+	return true
+}
+
+func OnCMsg_GetMails(a *models.AccountConn, mt int, data *models.EchoProto) bool {
+	rets, _ := json.Marshal(data)
+	a.C1 <- string(rets)
 	return true
 }

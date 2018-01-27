@@ -39,7 +39,7 @@ func (d *DBS) AccountRegist(name string, nick string) bool {
 			RegistTime: int32(time.Now().Unix())}
 
 		d.AccountIDs[d.LastID] = d.Accounts[name]
-		go GetMailSys().RegistMailBox(d.Accounts[name].ID)
+		go GetMailSys().RegistMailBox(d.Accounts[name].ID, name)
 
 		d.LastID++
 		return true

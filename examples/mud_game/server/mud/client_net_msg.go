@@ -1,7 +1,7 @@
 package mud
 
 func OnCMsg_AccountLeave(a *AccountConn, mt int, data *EchoProto) bool {
-	GetHall().AccountLeave(a,mt,data)
+	GetHall().AccountLeave(a, mt, data)
 	return true
 }
 
@@ -17,5 +17,10 @@ func OnCMsg_AskMatch(a *AccountConn, mt int, data *EchoProto) bool {
 
 func OnCMsg_SendMail(a *AccountConn, mt int, data *EchoProto) bool {
 	GetHall().SendMail(a, mt, data)
+	return true
+}
+
+func OnCMsg_GetMails(a *AccountConn, mt int, data *EchoProto) bool {
+	GetHall().GetMails(a, mt, data)
 	return true
 }

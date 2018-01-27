@@ -3,6 +3,7 @@ package mud
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"sync"
 	"time"
 )
@@ -62,46 +63,46 @@ func (h *Hall) AccountLeave(a *AccountConn, mt int, data *EchoProto) {
 	defer h.AccountLocker.Unlock()
 
 	if _, ok := h.Accounts[name]; ok {
-		if a.C!=nil {
+		if a.C != nil {
 			retData := *data
 			retData.Data["ret"] = "ok"
-			retData.Data["msg"] =  "正常离线"
+			retData.Data["msg"] = "正常离线"
 			ret, _ := json.Marshal(retData)
-			
+
 			err := a.C.WriteMessage(mt, ret)
 			if err != nil {
 				fmt.Printf("[W] 向网络写消息失败:%s\n", err)
 			}
-			
+
 			go func() {
-				select{
-				case <-time.After(1*time.Second):
+				select {
+				case <-time.After(1 * time.Second):
 					a.C.Close()
 					break
 				}
-			}()			
+			}()
 		}
-		
-		delete(hall.AccountIDs,h.Accounts[name].ID)
-		delete(hall.Accounts,name)
+
+		delete(hall.AccountIDs, h.Accounts[name].ID)
+		delete(hall.Accounts, name)
 	} else {
-		if a.C!=nil {
+		if a.C != nil {
 			retData := *data
 			retData.Data["ret"] = "failed"
-			retData.Data["msg"] =  "重复离线"
+			retData.Data["msg"] = "重复离线"
 			ret, _ := json.Marshal(retData)
-			
+
 			err := a.C.WriteMessage(mt, ret)
 			if err != nil {
 				fmt.Printf("[W] 向网络写消息失败:%s\n", err)
 			}
 			go func() {
-				select{
-				case <-time.After(1*time.Second):
+				select {
+				case <-time.After(1 * time.Second):
 					a.C.Close()
 					break
 				}
-			}()			
+			}()
 		}
 	}
 }
@@ -123,7 +124,7 @@ func (h *Hall) AccountLogin(a *AccountConn, mt int, data *EchoProto) {
 	} else {
 		retData := *data
 		retData.Data["ret"] = "fail"
-		retData.Data["msg"] =  "重复登录"
+		retData.Data["msg"] = "重复登录"
 		ret, _ := json.Marshal(retData)
 		err := a.C.WriteMessage(mt, ret)
 		if err != nil {
@@ -147,7 +148,8 @@ func (h *Hall) ToGetAccount(ac *AccountConn, mt int, data *EchoProto) {
 			Online:          true,
 			LastTime:        int32(time.Now().Unix()),
 			LastMailID:      0,
-			LastGetMailTime: time.Now().UnixNano()}
+			LastGetMailTime: time.Now().UnixNano(),
+			Conn:            ac}
 
 		h.AccountIDs[a.ID] = h.Accounts[name]
 
@@ -155,7 +157,7 @@ func (h *Hall) ToGetAccount(ac *AccountConn, mt int, data *EchoProto) {
 
 		retData := *data
 		retData.Data["ret"] = "ok"
-		retData.Data["msg"] =  ""
+		retData.Data["msg"] = ""
 
 		ret, _ := json.Marshal(retData)
 		err := ac.C.WriteMessage(mt, ret)
@@ -167,7 +169,7 @@ func (h *Hall) ToGetAccount(ac *AccountConn, mt int, data *EchoProto) {
 
 		retData := *data
 		retData.Data["ret"] = "fail"
-		retData.Data["msg"] =  "帐号未注册"
+		retData.Data["msg"] = "帐号未注册"
 		ret, _ := json.Marshal(retData)
 		err := ac.C.WriteMessage(mt, ret)
 		if err != nil {
@@ -205,9 +207,76 @@ func (h *Hall) OnMatchOver(accounts []string) {
 	// 生成房间(Room), 开搞喽
 }
 
+// GetMails 主动收取邮件
+func (h *Hall) GetMails(ac *AccountConn, mt int, data *EchoProto) {
+
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
+	if a, ok := h.Accounts[ac.Account]; ok {
+		go GetMailSys().GetMails(a.ID, h.OnGetMails)
+	}
+}
+
+// OnGetMails 主动收取邮件的反馈
+func (h *Hall) OnGetMails(accID int64, ret string, msg string) {
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
+	if ac, ok := h.AccountIDs[accID]; ok {
+		if ac.Conn == nil || ac.Conn.C == nil {
+			return
+		}
+
+		retJson, _ := json.Marshal(&EchoProto{
+			C: "Index",
+			M: "GetMails",
+			Data: map[string]interface{}{
+				"ret": ret,
+				"msg": msg}})
+
+		if err := ac.Conn.C.WriteMessage(websocket.TextMessage, retJson); err != nil {
+			fmt.Printf("[W] 向网络写消息失败:%s\n", err)
+		}
+	}
+}
+
 // SendMail 发送邮件
 func (h *Hall) SendMail(ac *AccountConn, mt int, data *EchoProto) {
+	tempID := data.Data["tempid"].(string)
+	recer := data.Data["recer"].(string)
+	title := data.Data["title"].(string)
+	content := data.Data["content"].(string)
 
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
+	if a, ok := h.Accounts[ac.Account]; ok {
+		go GetMailSys().SendByName(a.ID, recer, title, content, "", h.OnSendMail, tempID)
+	}
+}
+
+// OnSendMail 主动发送邮件的反馈
+func (h *Hall) OnSendMail(accID int64, tempID string, ret string) {
+	h.AccountLocker.Lock()
+	defer h.AccountLocker.Unlock()
+
+	if ac, ok := h.AccountIDs[accID]; ok {
+		if ac.Conn == nil || ac.Conn.C == nil {
+			return
+		}
+
+		retJson, _ := json.Marshal(&EchoProto{
+			C: "Index",
+			M: "SendMail",
+			Data: map[string]interface{}{
+				"ret": ret,
+				"msg": ""}})
+
+		if err := ac.Conn.C.WriteMessage(websocket.TextMessage, retJson); err != nil {
+			fmt.Printf("[W] 向网络写消息失败:%s\n", err)
+		}
+	}
 }
 
 // 房间战斗结束, 返回战斗结果, 每个玩家的信息分开

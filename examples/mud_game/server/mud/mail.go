@@ -1,6 +1,7 @@
 package mud
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 )
@@ -30,19 +31,21 @@ type Mail struct {
 
 // Mailbox 邮箱
 type Mailbox struct {
-	ID     int64           // 邮箱编号
-	Mails  map[int32]*Mail // 邮件
-	LastID int32           // 最后一封邮件编号
-	RSSBox map[int64]int32 // 订阅邮箱, [订阅的邮箱编号]最后一封邮件编号
+	ID      int64           // 邮箱编号
+	Account string          // 帐号名
+	Mails   map[int32]*Mail // 邮件
+	LastID  int32           // 最后一封邮件编号
+	RSSBox  map[int64]int32 // 订阅邮箱, [订阅的邮箱编号]最后一封邮件编号
 }
 
 // 邮件系统
 type MailSys struct {
-	mailboxs   map[int64]*Mailbox    // 邮箱
-	mailChange map[int64]interface{} // 邮件有变动
-	lastID     int64                 // 最后一个邮箱编号
-	skey       int32                 // 区服编号
-	locker     *sync.Mutex           // 邮件锁
+	mailboxs     map[int64]*Mailbox    // 邮箱
+	mailChange   map[int64]interface{} // 邮件有变动
+	mailAccounts map[string]int64      // 帐号名转邮箱ID
+	lastID       int64                 // 最后一个邮箱编号
+	skey         int32                 // 区服编号
+	locker       *sync.Mutex           // 邮件锁
 }
 
 var (
@@ -53,6 +56,7 @@ func init() {
 	mailSys = &MailSys{}
 	mailSys.mailboxs = make(map[int64]*Mailbox, 0)
 	mailSys.mailChange = make(map[int64]interface{}, 0)
+	mailSys.mailAccounts = make(map[string]int64, 0)
 	mailSys.lastID = 1
 	mailSys.skey = 1
 	mailSys.locker = new(sync.Mutex)
@@ -68,7 +72,16 @@ func (m *MailSys) Update() {
 }
 
 // Send 发送邮件
-func (m *MailSys) Send(senderID, recerID int64, title, content, script string) {
+func (m *MailSys) SendByName(senderID int64, recerName string, title, content, script string, back func(int64, string, string), tempID string) {
+	if recerID, ok := m.GetMailIDByAccount(recerName); ok {
+		m.Send(senderID, recerID, title, content, script, back, tempID)
+	} else {
+		go back(senderID, tempID, "no recer")
+	}
+}
+
+// Send 发送邮件
+func (m *MailSys) Send(senderID, recerID int64, title, content, script string, back func(int64, string, string), tempID string) {
 	m.locker.Lock()
 	defer m.locker.Unlock()
 
@@ -90,6 +103,10 @@ func (m *MailSys) Send(senderID, recerID int64, title, content, script string) {
 		v.LastID++
 
 		m.mailChange[recerID] = true
+
+		go back(senderID, tempID, "ok")
+	} else {
+		go back(senderID, tempID, "no recer")
 	}
 }
 
@@ -127,22 +144,44 @@ func (m *MailSys) SendRSS(rSSID int32, rSSMailBoxID, senderID, recerID int64, ti
 }
 
 // RegistMailBox 注册邮箱
-func (m *MailSys) RegistMailBox(accID int64) {
+func (m *MailSys) RegistMailBox(accID int64, accName string) {
 	m.locker.Lock()
 	defer m.locker.Unlock()
 
 	if _, ok := m.mailboxs[accID]; ok {
 		return
 	}
+
+	if len(accName) < 1 {
+		return
+	}
+
+	if _, ok := m.mailAccounts[accName]; ok {
+		return
+	}
+
 	m.mailboxs[accID] = &Mailbox{
-		ID:     accID,
-		Mails:  make(map[int32]*Mail, 0),
-		LastID: 1,
-		RSSBox: make(map[int64]int32)}
+		ID:      accID,
+		Account: accName,
+		Mails:   make(map[int32]*Mail, 0),
+		LastID:  1,
+		RSSBox:  make(map[int64]int32)}
+
+	m.mailAccounts[accName] = accID
+}
+
+// GetMailIDByAccount 通过帐号名索取邮箱ID
+func (m *MailSys) GetMailIDByAccount(accName string) (int64, bool) {
+	m.locker.Lock()
+	defer m.locker.Unlock()
+	if v, ok := m.mailAccounts[accName]; ok {
+		return v, true
+	}
+	return 0, false
 }
 
 // GetMails 索取所有邮件(可以考虑分段索取)
-func (m *MailSys) GetMails(accID int64) (ret []Mail) {
+func (m *MailSys) GetMails(accID int64, back func(int64, string, string)) (ret []Mail) {
 	m.locker.Lock()
 	defer m.locker.Unlock()
 
@@ -150,6 +189,10 @@ func (m *MailSys) GetMails(accID int64) (ret []Mail) {
 		for _, v := range m.mailboxs[accID].Mails {
 			ret = append(ret, *v)
 		}
+		mails, _ := json.Marshal(&ret)
+		go back(accID, "ok", string(mails))
+	} else {
+		go back(accID, "no mailbox", "")
 	}
 	return
 }
