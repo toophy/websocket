@@ -34,6 +34,7 @@ func init() {
 	gMsgFuncs["Index.Login"] = &MessageFunc{CM: "Index.Login", Proc: OnCMsg_AccountLogin}
 	gMsgFuncs["Index.AskMatch"] = &MessageFunc{CM: "Index.AskMatch", Proc: OnCMsg_AskMatch}
 	gMsgFuncs["Index.SendMail"] = &MessageFunc{CM: "Index.SendMail", Proc: OnCMsg_SendMail}
+	gMsgFuncs["Index.GetMails"] = &MessageFunc{CM: "Index.GetMails", Proc: OnCMsg_GetMails}
 	gMsgFuncs["Index.Leave"] = &MessageFunc{CM: "Index.Leave", Proc: OnCMsg_AccountLeave}
 }
 

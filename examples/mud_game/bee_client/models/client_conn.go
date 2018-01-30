@@ -133,6 +133,7 @@ func SendMail(account, recer, title, content string) {
 		C: "Index",
 		M: "SendMail",
 		Data: map[string]interface{}{
+			"tempid":  "1",
 			"recer":   recer,
 			"title":   title,
 			"content": content}}); ok == nil {
