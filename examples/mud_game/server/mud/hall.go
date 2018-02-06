@@ -43,7 +43,7 @@ func (h *Hall) Update() {
 				}
 				if time.Now().Unix() > v.LastGetMailTime+10 {
 					v.LastGetMailTime = time.Now().Unix()
-					go GetMailSys().GetNextMails(v.AccountInfo.ID, v.LastMailID)
+					go GetMailSys().GetNextMails(v.AccountInfo.ID, v.LastMailID, h.OnGetMails)
 				}
 			}
 			h.AccountLocker.Unlock()
@@ -210,11 +210,13 @@ func (h *Hall) OnMatchOver(accounts []string) {
 // GetMails 主动收取邮件
 func (h *Hall) GetMails(ac *AccountConn, mt int, data *EchoProto) {
 
+	last_id := data.Data["last_id"].(int32)
+
 	h.AccountLocker.Lock()
 	defer h.AccountLocker.Unlock()
 
 	if a, ok := h.Accounts[ac.Account]; ok {
-		go GetMailSys().GetMails(a.ID, h.OnGetMails)
+		go GetMailSys().GetNextMails(a.ID, last_id, h.OnGetMails)
 	}
 }
 
@@ -288,26 +290,5 @@ func (h *Hall) OnRoomOver(battles BattleInfo) {
 		println("战报:", h.AccountIDs[battles.AccID].Name)
 	} else {
 		println("帐号不存在:", battles.AccID)
-	}
-}
-
-// 处理返回邮件
-func (h *Hall) OnRecvMails(accID int64, mails []Mail) {
-	h.AccountLocker.Lock()
-	defer h.AccountLocker.Unlock()
-
-	if _, ok := h.AccountIDs[accID]; ok {
-		lastMailID := int32(0)
-		for k, _ := range mails {
-			if mails[k].ID > lastMailID {
-				lastMailID = mails[k].ID
-			}
-			// 1. 系统的脚本邮件, a. 给客户端解释执行 b. 立即解释执行
-			// 2. 普通邮件, a. 给客户端解释执行
-			println("接收到邮件:", mails[k].Title)
-		}
-		if lastMailID > h.AccountIDs[accID].LastMailID {
-			h.AccountIDs[accID].LastMailID = lastMailID
-		}
 	}
 }

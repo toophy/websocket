@@ -24,6 +24,8 @@ func main() {
 	flag.Parse()
 	log.SetFlags(0)
 
+	mud.GetDBS().AccountRegist("system", "系统")
+	mud.GetDBS().AccountRegist("gm001", "管理员1号")
 	mud.GetDBS().AccountRegist("wind1", "蓝枫1号")
 	mud.GetDBS().AccountRegist("wind2", "蓝枫2号")
 

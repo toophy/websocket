@@ -110,36 +110,33 @@ func (m *MailSys) Send(senderID, recerID int64, title, content, script string, b
 	}
 }
 
-// Send 发送邮件
-func (m *MailSys) SendRSS(rSSID int32, rSSMailBoxID, senderID, recerID int64, title, content, script string) {
-	m.locker.Lock()
-	defer m.locker.Unlock()
-
+// sendRss mail模块使用
+func (m *MailSys) sendRss(mail *Mail, rSSMailBoxID, recerID int64) {
 	if v, ok := m.mailboxs[recerID]; ok {
-		mailBody := &Mail{
-			ID:            v.LastID,
-			RSSMailBoxID:  rSSMailBoxID,
-			RSSID:         rSSID,
-			Title:         title,
-			SenderID:      senderID,
-			RecverID:      recerID,
-			Content:       content,
-			Script:        script,
-			Read:          false,
-			RecvAccessory: false,
-			SendTime:      int32(time.Now().Unix()),
-			DestoryTime:   int32(time.Now().Unix()) + int32(1*24*3600)}
-		v.Mails[mailBody.ID] = mailBody
-		v.LastID++
-
 		// 更新订阅版本号
 		if _, ok := v.RSSBox[rSSMailBoxID]; ok {
-			if rSSID > v.RSSBox[rSSMailBoxID] {
-				v.RSSBox[rSSMailBoxID] = rSSID
+			if mail.ID > v.RSSBox[rSSMailBoxID] {
+				mailBody := &Mail{
+					ID:            v.LastID,
+					RSSMailBoxID:  rSSMailBoxID,
+					RSSID:         mail.ID,
+					Title:         mail.Title,
+					SenderID:      mail.SenderID,
+					RecverID:      recerID,
+					Content:       mail.Content,
+					Script:        mail.Script,
+					Read:          false,
+					RecvAccessory: false,
+					SendTime:      mail.SendTime,
+					DestoryTime:   mail.DestoryTime}
+				v.Mails[mailBody.ID] = mailBody
+				v.LastID++
+
+				v.RSSBox[rSSMailBoxID] = mailBody.RSSID
+
+				m.mailChange[recerID] = true
 			}
 		}
-
-		m.mailChange[recerID] = true
 	}
 }
 
@@ -180,38 +177,43 @@ func (m *MailSys) GetMailIDByAccount(accName string) (int64, bool) {
 	return 0, false
 }
 
-// GetMails 索取所有邮件(可以考虑分段索取)
-func (m *MailSys) GetMails(accID int64, back func(int64, string, string)) (ret []Mail) {
-	m.locker.Lock()
-	defer m.locker.Unlock()
-
-	if _, ok := m.mailboxs[accID]; ok {
-		for _, v := range m.mailboxs[accID].Mails {
-			ret = append(ret, *v)
-		}
-		mails, _ := json.Marshal(&ret)
-		go back(accID, "ok", string(mails))
-	} else {
-		go back(accID, "no mailbox", "")
-	}
-	return
-}
-
 // GetNextMails 索取mailID之后的所有邮件
-func (m *MailSys) GetNextMails(accID int64, mailID int32) (ret []Mail) {
+func (m *MailSys) GetNextMails(accID int64, mailID int32, back func(int64, string, string)) {
 	m.locker.Lock()
 	defer m.locker.Unlock()
 
+	ret := make([]Mail, 0)
+
 	if _, ok := m.mailboxs[accID]; ok {
+
+		rssBox := m.mailboxs[accID].RSSBox
+
+		for rssMailID, lastRssID := range rssBox {
+			if v, ok := m.mailboxs[rssMailID]; ok {
+				if v.LastID > lastRssID {
+					// 区间 (lastRssID,v.LastID]
+					for i := lastRssID + 1; i <= v.LastID; i++ {
+						if _, ok := v.Mails[i]; ok {
+							m.sendRss(v.Mails[i], rssMailID, accID)
+						}
+					}
+				}
+			}
+		}
+
 		for _, v := range m.mailboxs[accID].Mails {
 			if v.ID > mailID {
 				ret = append(ret, *v)
 			}
 		}
+
+		if mails, ok := json.Marshal(&ret); ok == nil {
+			go back(accID, "ok", string(mails))
+			return
+		}
 	}
 
-	go GetHall().OnRecvMails(accID, ret)
-	return
+	go back(accID, "no mailbox", "")
 }
 
 // GetLastMailID 获取邮箱的最后一封信编号
@@ -234,6 +236,24 @@ func (m *MailSys) AppendRSS(accID int64, rssID int64, rssLastID int32) {
 
 	if _, ok := m.mailboxs[accID]; ok {
 		m.mailboxs[accID].RSSBox[rssID] = rssLastID
+	}
+}
+
+// AppendRSSName 增加订阅
+func (m *MailSys) AppendRSSName(accName string, rssName string) {
+	m.locker.Lock()
+	defer m.locker.Unlock()
+
+	if accID, ok := m.GetMailIDByAccount(accName); ok {
+		if rssID, ok := m.GetMailIDByAccount(rssName); ok {
+			if _, ok := m.mailboxs[accID]; ok {
+				m.mailboxs[accID].RSSBox[rssID] = rssLastID
+			}
+		} else {
+			go back(senderID, tempID, "no recer")
+		}
+	} else {
+		go back(senderID, tempID, "no recer")
 	}
 }
 
