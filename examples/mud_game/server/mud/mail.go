@@ -240,20 +240,20 @@ func (m *MailSys) AppendRSS(accID int64, rssID int64, rssLastID int32) {
 }
 
 // AppendRSSName 增加订阅
-func (m *MailSys) AppendRSSName(accName string, rssName string) {
+func (m *MailSys) AppendRSSName(accName string, rssName string, back func(string, string, string)) {
 	m.locker.Lock()
 	defer m.locker.Unlock()
 
 	if accID, ok := m.GetMailIDByAccount(accName); ok {
 		if rssID, ok := m.GetMailIDByAccount(rssName); ok {
 			if _, ok := m.mailboxs[accID]; ok {
-				m.mailboxs[accID].RSSBox[rssID] = rssLastID
+				m.mailboxs[accID].RSSBox[rssID] = m.mailboxs[rssID].LastID
 			}
 		} else {
-			go back(senderID, tempID, "no recer")
+			go back(accName, rssName, "no recer")
 		}
 	} else {
-		go back(senderID, tempID, "no recer")
+		go back(accName, rssName, "no recer")
 	}
 }
 
