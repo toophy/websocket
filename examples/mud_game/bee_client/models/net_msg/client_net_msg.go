@@ -3,35 +3,36 @@ package net_msg
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/gorilla/websocket/examples/mud_game/bee_client/models"
 )
 
 func init() {
-	models.GMsgFuncs["Index.Login"] = &models.MessageFunc{CM: "Index.Login", Proc: OnCMsg_AccountLogin}
-	models.GMsgFuncs["Index.AskMatch"] = &models.MessageFunc{CM: "Index.AskMatch", Proc: OnCMsg_AskMatch}
-	models.GMsgFuncs["Index.SendMail"] = &models.MessageFunc{CM: "Index.SendMail", Proc: OnCMsg_SendMail}
+	models.GMsgFuncs["Index.Login"] = &models.MessageFunc{CM: "Index.Login", Proc: OnCMsgAccountLogin}
+	models.GMsgFuncs["Index.AskMatch"] = &models.MessageFunc{CM: "Index.AskMatch", Proc: OnCMsgAskMatch}
+	models.GMsgFuncs["Index.SendMail"] = &models.MessageFunc{CM: "Index.SendMail", Proc: OnCMsgSendMail}
 	models.GMsgFuncs["Index.GetMails"] = &models.MessageFunc{CM: "Index.GetMails", Proc: OnCMsg_GetMails}
-	models.GMsgFuncs["Index.Leave"] = &models.MessageFunc{CM: "Index.Leave", Proc: OnCMsg_AccountLeave}
+	models.GMsgFuncs["Index.Leave"] = &models.MessageFunc{CM: "Index.Leave", Proc: OnCMsgAccountLeave}
 }
 
-func OnCMsg_AccountLeave(a *models.AccountConn, mt int, data *models.EchoProto) bool {
+func OnCMsgAccountLeave(a *models.AccountConn, mt int, data *models.EchoProto) bool {
 	// 发送leave
 	fmt.Printf("[I] 帐号%s正常离线", a.Account)
 	models.LeaveAccount(a.Account)
 	return true
 }
 
-func OnCMsg_AccountLogin(a *models.AccountConn, mt int, data *models.EchoProto) bool {
+func OnCMsgAccountLogin(a *models.AccountConn, mt int, data *models.EchoProto) bool {
 	rets, _ := json.Marshal(data)
 	a.C1 <- string(rets)
 	return true
 }
 
-func OnCMsg_AskMatch(a *models.AccountConn, mt int, data *models.EchoProto) bool {
+func OnCMsgAskMatch(a *models.AccountConn, mt int, data *models.EchoProto) bool {
 	return true
 }
 
-func OnCMsg_SendMail(a *models.AccountConn, mt int, data *models.EchoProto) bool {
+func OnCMsgSendMail(a *models.AccountConn, mt int, data *models.EchoProto) bool {
 	rets, _ := json.Marshal(data)
 	a.C1 <- string(rets)
 	return true

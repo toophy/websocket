@@ -7,6 +7,7 @@ import (
 	"net/url"
 	// "encoding/json"
 	"log"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -31,9 +32,9 @@ var (
 func init() {
 	gMsgFuncs = make(map[string]*MessageFunc, 0)
 
-	gMsgFuncs["Index.Login"] = &MessageFunc{CM: "Index.Login", Proc: OnCMsg_AccountLogin}
-	gMsgFuncs["Index.AskMatch"] = &MessageFunc{CM: "Index.AskMatch", Proc: OnCMsg_AskMatch}
-	gMsgFuncs["Index.SendMail"] = &MessageFunc{CM: "Index.SendMail", Proc: OnCMsg_SendMail}
+	gMsgFuncs["Index.Login"] = &MessageFunc{CM: "Index.Login", Proc: OnCMsgAccountLogin}
+	gMsgFuncs["Index.AskMatch"] = &MessageFunc{CM: "Index.AskMatch", Proc: OnCMsgAskMatch}
+	gMsgFuncs["Index.SendMail"] = &MessageFunc{CM: "Index.SendMail", Proc: OnCMsgSendMail}
 }
 
 // ClientNetConn 处理客户端网络连接消息
@@ -62,17 +63,17 @@ func ClientNetConn(w http.ResponseWriter, r *http.Request) {
 	// }
 }
 
-func AccountLogin(account string,pwd string)  {
+func AccountLogin(account string, pwd string) {
 	retData := EchoProto{
 		"Index",
 		"Login",
-		map[string]interface{}{} }
+		map[string]interface{}{}}
 
 	retData.Data["account"] = account
 	retData.Data["pwd"] = pwd
 
-	if GetAccount(account)!=nil {
-		fmt.Printf("[I] 帐号%s已经在登录中\n",account)
+	if GetAccount(account) != nil {
+		fmt.Printf("[I] 帐号%s已经在登录中\n", account)
 		return
 	}
 
@@ -84,7 +85,6 @@ func AccountLogin(account string,pwd string)  {
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
-
 
 	go func() {
 		defer c.Close()

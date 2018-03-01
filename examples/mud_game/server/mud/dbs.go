@@ -57,7 +57,7 @@ func (d *DBS) GetAccount(name string) (a AccountInfo, ret bool) {
 	return
 }
 
-// GetAccount 获取帐号信息
+// GetAccountByID 获取帐号信息
 func (d *DBS) GetAccountByID(accID int64) (a AccountInfo, ret bool) {
 	ret = false
 	if _, ok := d.AccountIDs[accID]; ok {

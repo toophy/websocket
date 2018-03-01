@@ -31,11 +31,11 @@ var (
 func init() {
 	gMsgFuncs = make(map[string]*MessageFunc, 0)
 
-	gMsgFuncs["Index.Login"] = &MessageFunc{CM: "Index.Login", Proc: OnCMsg_AccountLogin}
-	gMsgFuncs["Index.AskMatch"] = &MessageFunc{CM: "Index.AskMatch", Proc: OnCMsg_AskMatch}
-	gMsgFuncs["Index.SendMail"] = &MessageFunc{CM: "Index.SendMail", Proc: OnCMsg_SendMail}
-	gMsgFuncs["Index.GetMails"] = &MessageFunc{CM: "Index.GetMails", Proc: OnCMsg_GetMails}
-	gMsgFuncs["Index.Leave"] = &MessageFunc{CM: "Index.Leave", Proc: OnCMsg_AccountLeave}
+	gMsgFuncs["Index.Login"] = &MessageFunc{CM: "Index.Login", Proc: OnCMsgAccountLogin}
+	gMsgFuncs["Index.AskMatch"] = &MessageFunc{CM: "Index.AskMatch", Proc: OnCMsgAskMatch}
+	gMsgFuncs["Index.SendMail"] = &MessageFunc{CM: "Index.SendMail", Proc: OnCMsgSendMail}
+	gMsgFuncs["Index.GetMails"] = &MessageFunc{CM: "Index.GetMails", Proc: OnCMsgGetMails}
+	gMsgFuncs["Index.Leave"] = &MessageFunc{CM: "Index.Leave", Proc: OnCMsgAccountLeave}
 }
 
 // ClientNetConn 处理客户端网络连接消息
@@ -58,13 +58,13 @@ func ClientNetConn(w http.ResponseWriter, r *http.Request) {
 		var em EchoProto
 		mt, message, err := c.ReadMessage()
 		if err != nil {
-			em.Data = make(map[string]interface{},0)
+			em.Data = make(map[string]interface{}, 0)
 			em.Data["account"] = a.Account
 			GetHall().AccountLeave(a, mt, &em)
 			fmt.Println("[E] 网络连接读取错误:", err)
 			break
 		}
-		
+
 		json.Unmarshal(message, &em)
 		if _, ok := gMsgFuncs[em.C+"."+em.M]; ok {
 			gMsgFuncs[em.C+"."+em.M].Proc(a, mt, &em)
