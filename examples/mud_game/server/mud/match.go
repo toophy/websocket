@@ -84,6 +84,7 @@ func (m *MatchSys) matchGame(gameType string, accName string, count int) (ret []
 			if len(ret) < count-1 {
 				ret = []string{}
 			} else {
+				聊天
 				ret = append(ret, accName)
 			}
 		}
